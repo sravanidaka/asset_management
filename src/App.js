@@ -1,24 +1,115 @@
-import logo from './logo.svg';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import Reports from './components/Reports';
+import Financials from './components/Financials';
+import Compliance from './components/Compliance';
+import DisposalReport from './components/DisposalReport';
+import Settings from './components/Settings';
+import Dashboard from './components/Dashboard';
+import Register from './components/Register';
+import AddNew from './components/AddNew';
+import Procure from './components/Procure';
+import Allocate from './components/Allocate';
+import Transfer from './components/Transfer';
+import Financial from './components/Financial';
+import Disposal from './components/Disposal';
+import Schedule from './components/Schedule';
+import ServiceLog from './components/ServiceLog';
+import Requests from './components/Requests';
+import History from './components/History';
+import User from './components/User';
+import Login from './components/Login';
+import NewAudit from './components/NewAudit';
+import AuditPlan from './components/AuditPlan';
+import AssignTeam from './components/AssignTeam';
+import AuditExecute from './components/AuditExecute';
+import AuditReview from './components/AuditReview';
+import ManageCategory from './components/ManageCategory';
+import ManageStatus from './components/ManageStatus';
+import ManageLocation from './components/ManageLocation';
+import ManageVendor from './components/ManageVendor';
+import PaymentMethods from './components/PaymentMethods';
+import ServiceTypes from './components/ServiceTypes';
+import ApprovalHierarchies from './components/ApprovalHierarchies';
+import Roles from './components/Roles';
+import Sidebar from './Sidebar';
+
+function MainApp({ setIsAuthenticated }) {
+  const [activeScreen, setActiveScreen] = useState('dashboard');
+
+  const handleNavClick = (screen) => {
+    console.log(`Navigating to: ${screen}`);
+    setActiveScreen(screen);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+  };
+
+  return (
+    <div className="container-fluid">
+      <div className="row g-0">
+        <Sidebar activeScreen={activeScreen} handleNavClick={handleNavClick} handleLogout={handleLogout} />
+        <main className="col-12 col-md-10 col-lg-10 p-3 p-lg-4">
+          <div className="container-fluid content">
+            {activeScreen === 'reports' && <Reports />}
+            {activeScreen === 'financials' && <Financials />}
+            {activeScreen === 'compliance' && <Compliance setActiveScreen={setActiveScreen} />}
+            {activeScreen === 'disposalreport' && <DisposalReport />}
+            {activeScreen === 'settings' && <Settings onNavigate={handleNavClick} />}
+            {activeScreen === 'dashboard' && <Dashboard />}
+            {activeScreen === 'register' && <Register />}
+            {activeScreen === 'addnew' && <AddNew />}
+            {activeScreen === 'procure' && <Procure />}
+            {activeScreen === 'allocate' && <Allocate />}
+            {activeScreen === 'transfer' && <Transfer />}
+            {activeScreen === 'financial' && <Financial />}
+            {activeScreen === 'disposal' && <Disposal />}
+            {activeScreen === 'history' && <History />}
+            {activeScreen === 'schedule' && <Schedule />}
+            {activeScreen === 'service-log' && <ServiceLog />}
+            {activeScreen === 'requests' && <Requests />}
+            {activeScreen === 'user' && <User />}
+            {activeScreen === 'roles' && <Roles />}
+            {activeScreen === 'new-audit' && <NewAudit setActiveScreen={setActiveScreen} />}
+            {activeScreen === 'audit-plan' && <AuditPlan setActiveScreen={setActiveScreen} />}
+            {activeScreen === 'assign-team' && <AssignTeam setActiveScreen={setActiveScreen} />}
+            {activeScreen === 'execute' && <AuditExecute setActiveScreen={setActiveScreen} />}
+            {activeScreen === 'review' && <AuditReview setActiveScreen={setActiveScreen} />}
+            {activeScreen === 'ManageCategory' && <ManageCategory onNavigate={handleNavClick} />}
+            {activeScreen === 'ManageStatus' && <ManageStatus onNavigate={handleNavClick} />}
+            {activeScreen === 'ManageLocation' && <ManageLocation onNavigate={handleNavClick} />}
+            {activeScreen === 'ManageVendor' && <ManageVendor onNavigate={handleNavClick} />}
+            {activeScreen === 'PaymentMethods' && <PaymentMethods onNavigate={handleNavClick} />}
+            {activeScreen === 'ServiceTypes' && <ServiceTypes onNavigate={handleNavClick} />}
+            {activeScreen === 'ApprovalHierarchies' && <ApprovalHierarchies onNavigate={handleNavClick} />}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
+        <Route
+          path="/*"
+          element={
+            isAuthenticated ? (
+              <MainApp setIsAuthenticated={setIsAuthenticated} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
 
