@@ -14,7 +14,7 @@ const Navbar = ({ children }) => {
     <div className="app-layout d-flex">
       {/* Sidebar */}
       <aside className="sidebar p-3">
-        <h2>AssetFlow</h2>
+        <h2>Asset Management</h2>
         <nav className="nav flex-column">
           <Link to="/" className="nav-link">Dashboard</Link>
           <Link to="/register" className="nav-link">Register</Link>

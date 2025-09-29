@@ -63,7 +63,9 @@ export default function ManageCategory({ onNavigate }) {
             {/* Row 1 */}
             <div className="row mb-3">
               <div className="col-md-4 ">
-                <label className="form-label">Category Name</label>
+                <label className="form-label">
+                  Category Name <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -71,10 +73,13 @@ export default function ManageCategory({ onNavigate }) {
                   value={formData.category_name}
                   onChange={handleChange}
                   placeholder="e.g., Laptops"
+                  required
                 />
               </div>
               <div className="col-md-4 ">
-                <label className="form-label">Parent Category</label>
+                <label className="form-label">
+                  Parent Category <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -82,17 +87,21 @@ export default function ManageCategory({ onNavigate }) {
                   value={formData.parent_category}
                   onChange={handleChange}
                   placeholder="None"
+                  required
                 />
               </div>
               <div className="col-md-4 ">
-                <label className="form-label">Useful Life (years)</label>
+                <label className="form-label">
+                  Useful Life (years) <span className="text-danger">*</span>
+                </label>
                 <input
-                  type="text"
+                  type="number"
                   className="form-control"
                   name="useful_life"
                   value={formData.useful_life}
                   onChange={handleChange}
                   placeholder="5"
+                  required
                 />
               </div>
             </div>
@@ -100,7 +109,9 @@ export default function ManageCategory({ onNavigate }) {
             {/* Row 2 */}
             <div className="row md-4 mt-2">
               <div className="col-md-12 ">
-                <label className="form-label">Description</label>
+                <label className="form-label">
+                  Description <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -108,6 +119,7 @@ export default function ManageCategory({ onNavigate }) {
                   value={formData.description}
                   onChange={handleChange}
                   placeholder="Short description..."
+                  required
                 />
               </div>
             </div>
@@ -115,7 +127,9 @@ export default function ManageCategory({ onNavigate }) {
             {/* Row 3 */}
             <div className="row mb-3">
               <div className="col-md-4 ">
-                <label className="form-label">Default Depreciation</label>
+                <label className="form-label">
+                  Default Depreciation <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -123,10 +137,13 @@ export default function ManageCategory({ onNavigate }) {
                   value={formData.default_depreciation}
                   onChange={handleChange}
                   placeholder="Straight Line"
+                  required
                 />
               </div>
               <div className="col-md-4 ">
-                <label className="form-label">CapEx/OpEx</label>
+                <label className="form-label">
+                  CapEx/OpEx <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -134,10 +151,13 @@ export default function ManageCategory({ onNavigate }) {
                   value={formData.capex_opex}
                   onChange={handleChange}
                   placeholder="CapEx"
+                  required
                 />
               </div>
               <div className="col-md-4 ">
-                <label className="form-label">Track Warranty</label>
+                <label className="form-label">
+                  Track Warranty <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -145,6 +165,7 @@ export default function ManageCategory({ onNavigate }) {
                   value={formData.track_warranty}
                   onChange={handleChange}
                   placeholder="Yes"
+                  required
                 />
               </div>
             </div>
