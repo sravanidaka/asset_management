@@ -1,269 +1,265 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaTrash, FaArrowLeft } from "react-icons/fa";
+import { Drawer, Form, Input, InputNumber, Select, Button, Space, Table, message } from "antd";
+import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "../App.css";
 
 export default function ManageCategory({ onNavigate }) {
-  // 🔹 Form state
-  const [formData, setFormData] = useState({
-    category_name: "",
-    parent_category: "",
-    useful_life: "",
-    description: "",
-    default_depreciation: "",
-    capex_opex: "",
-    track_warranty: "",
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [form] = Form.useForm();
+  const [searchText, setSearchText] = useState("");
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
   });
+  const [dataSource, setDataSource] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // 🔹 Handle input changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // 🔹 Fetch categories from API
+  const fetchCategories = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:3000/api/asset-categories");
+      if (!response.ok) {
+        throw new Error("Failed to fetch categories");
+      }
+      const data = await response.json();
+      // Add key property for each item (required by Ant Design Table)
+      const dataWithKeys = data.map((item, index) => ({
+        ...item,
+        key: item.id || item._id || index.toString(),
+      }));
+      setDataSource(dataWithKeys);
+      message.success("Categories loaded successfully");
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      message.error("Failed to load categories");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 🔹 Handle form submit
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form Submitted:", formData);
-    // later: call API -> axios.post('/api/categories', formData)
+  // 🔹 Fetch data on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // 🔹 Filter data based on search
+  const filteredData = dataSource.filter((item) =>
+    Object.values(item).some((value) =>
+      value.toString().toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
+
+  // 🔹 Table columns with sorting
+  const columns = [
+    {
+      title: "Category Name",
+      dataIndex: "category_name",
+      key: "category_name",
+      sorter: (a, b) => a.category_name.localeCompare(b.category_name),
+    },
+    {
+      title: "Parent Category",
+      dataIndex: "parent_category",
+      key: "parent_category",
+      sorter: (a, b) => a.parent_category.localeCompare(b.parent_category),
+    },
+    {
+      title: "Type (CapEx/OpEx)",
+      dataIndex: "capex_opex",
+      key: "capex_opex",
+      sorter: (a, b) => a.capex_opex.localeCompare(b.capex_opex),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          <Button type="default" size="small" icon={<FaEdit />} />
+          <Button type="primary" danger size="small" icon={<FaTrash />} />
+        </Space>
+      ),
+    },
+  ];
+
+  // 🔹 Handle pagination change
+  const handleTableChange = (pagination) => {
+    setPagination(pagination);
   };
 
-  // 🔹 Handle reset
-  const handleReset = () => {
-    setFormData({
-      category_name: "",
-      parent_category: "",
-      useful_life: "",
-      description: "",
-      default_depreciation: "",
-      capex_opex: "",
-      track_warranty: "",
-    });
+  // 🔹 Save Category
+  const handleSave = async (values) => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:3000/api/asset-categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create category");
+      }
+
+      const newCategory = await response.json();
+      message.success("Category created successfully!");
+      
+      // Refresh the table data
+      await fetchCategories();
+      
+      form.resetFields();
+      setDrawerVisible(false);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      message.error("Failed to create category");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div
-      className="container-fluid p-1 position-relative"
-      style={{ minHeight: "100vh" }}
-    >
+    <div className="container-fluid p-1 position-relative" style={{ minHeight: "100vh" }}>
       {/* 🔹 Header Row */}
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className="mb-1">Asset Categories</h2>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            className="btn btn-success px-4"
+            onClick={() => onNavigate("settings")}
+          >
+            <FaArrowLeft /> Back
+          </button>
+          <h2 className="mb-1">Asset Categories</h2>
+        </div>
         <div className="d-flex gap-2">
           <button className="btn btn-success px-4">All Types</button>
           <button className="btn btn-success px-4">All Departments</button>
-        </div>
-      </div>
-
-      {/* 🔹 Create Category Form */}
-      <div className="card custom-shadow mb-3">
-        <div className="card-body">
-          <h5 className="fs-4 mb-3">Create Category</h5>
-          <form onSubmit={handleSubmit}>
-            {/* Row 1 */}
-            <div className="row mb-3">
-              <div className="col-md-4 ">
-                <label className="form-label">
-                  Category Name <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="category_name"
-                  value={formData.category_name}
-                  onChange={handleChange}
-                  placeholder="e.g., Laptops"
-                  required
-                />
-              </div>
-              <div className="col-md-4 ">
-                <label className="form-label">
-                  Parent Category <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="parent_category"
-                  value={formData.parent_category}
-                  onChange={handleChange}
-                  placeholder="None"
-                  required
-                />
-              </div>
-              <div className="col-md-4 ">
-                <label className="form-label">
-                  Useful Life (years) <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="number"
-                  className="form-control"
-                  name="useful_life"
-                  value={formData.useful_life}
-                  onChange={handleChange}
-                  placeholder="5"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Row 2 */}
-            <div className="row md-4 mt-2">
-              <div className="col-md-12 ">
-                <label className="form-label">
-                  Description <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Short description..."
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Row 3 */}
-            <div className="row mb-3">
-              <div className="col-md-4 ">
-                <label className="form-label">
-                  Default Depreciation <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="default_depreciation"
-                  value={formData.default_depreciation}
-                  onChange={handleChange}
-                  placeholder="Straight Line"
-                  required
-                />
-              </div>
-              <div className="col-md-4 ">
-                <label className="form-label">
-                  CapEx/OpEx <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="capex_opex"
-                  value={formData.capex_opex}
-                  onChange={handleChange}
-                  placeholder="CapEx"
-                  required
-                />
-              </div>
-              <div className="col-md-4 ">
-                <label className="form-label">
-                  Track Warranty <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="track_warranty"
-                  value={formData.track_warranty}
-                  onChange={handleChange}
-                  placeholder="Yes"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Buttons */}
-            <div className="d-flex justify-content-end gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary px-4"
-                onClick={handleReset}
-              >
-                Reset
-              </button>
-              <button type="submit" className="btn btn-primary px-4">
-                Save Category
-              </button>
-            </div>
-          </form>
+          <button
+            className="btn btn-success px-4"
+            onClick={() => setDrawerVisible(true)}
+          >
+            <PlusOutlined /> Create Category
+          </button>
         </div>
       </div>
 
       {/* 🔹 Categories Table */}
       <div className="card custom-shadow mb-3">
         <div className="card-body">
-          <h5 className="fs-4 mb-3">Categories</h5>
-          <table className="table table-bordered table-hover">
-            <thead className="table-light">
-              <tr>
-                <th>Category Name</th>
-                <th>Parent Category</th>
-                <th>Type (CapEx/OpEx)</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Laptops</td>
-                <td>IT Equipment</td>
-                <td>CapEx</td>
-                <td>
-                  <button className="btn btn-light btn-sm me-2">
-                    <FaEdit />
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>Monitors</td>
-                <td>IT Equipment</td>
-                <td>CapEx</td>
-                <td>
-                  <button className="btn btn-light btn-sm me-2">
-                    <FaEdit />
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>Furniture</td>
-                <td>Non-IT</td>
-                <td>CapEx</td>
-                <td>
-                  <button className="btn btn-light btn-sm me-2">
-                    <FaEdit />
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>Vehicles</td>
-                <td>Transport</td>
-                <td>CapEx</td>
-                <td>
-                  <button className="btn btn-light btn-sm me-2">
-                    <FaEdit />
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5 className="fs-4 mb-0">Categories</h5>
+            <Input
+              placeholder="Search categories..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 300 }}
+              allowClear
+            />
+          </div>
+          <Table
+            columns={columns}
+            dataSource={filteredData}
+            loading={loading}
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+              pageSizeOptions: ['5', '10', '20', '50', '100'],
+            }}
+            onChange={handleTableChange}
+            bordered
+            size="middle"
+          />
         </div>
-        <button
-          className="btn-light btn-sm px-5 position-absolute"
-          style={{ bottom: "8px", right: "45px" }}
-          onClick={() => onNavigate("settings")}
-        >
-          Back
-        </button>
       </div>
+
+      {/* 🔹 Drawer Form */}
+      <Drawer
+        title="Create Category"
+        placement="right"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        width={500}
+      >
+        <Form layout="vertical" form={form} onFinish={handleSave}>
+          <Form.Item
+            label="Category Name"
+            name="category_name"
+            rules={[{ required: true, message: "Please enter category name" }]}
+          >
+            <Input placeholder="e.g., Laptops" />
+          </Form.Item>
+
+          <Form.Item
+            label="Parent Category"
+            name="parent_category"
+            rules={[{ required: true, message: "Please enter parent category" }]}
+          >
+            <Input placeholder="e.g., IT Equipment" />
+          </Form.Item>
+
+          <Form.Item
+            label="Useful Life (years)"
+            name="useful_life"
+            rules={[{ required: true, message: "Please enter useful life" }]}
+          >
+            <InputNumber min={1} className="w-100" placeholder="5" />
+          </Form.Item>
+
+          <Form.Item
+            label="Description"
+            name="description"
+            rules={[{ required: true, message: "Please enter description" }]}
+          >
+            <Input.TextArea rows={3} placeholder="Short description..." />
+          </Form.Item>
+
+          <Form.Item
+            label="Default Depreciation"
+            name="default_depreciation"
+            rules={[{ required: true, message: "Please enter depreciation method" }]}
+          >
+            <Input placeholder="Straight Line" />
+          </Form.Item>
+
+          <Form.Item
+            label="CapEx/OpEx"
+            name="capex_opex"
+            rules={[{ required: true, message: "Please select type" }]}
+          >
+            <Select placeholder="Select type">
+              <Select.Option value="CapEx">CapEx</Select.Option>
+              <Select.Option value="OpEx">OpEx</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Track Warranty"
+            name="track_warranty"
+            rules={[{ required: true, message: "Please select option" }]}
+          >
+            <Select placeholder="Select option">
+              <Select.Option value="Yes">Yes</Select.Option>
+              <Select.Option value="No">No</Select.Option>
+            </Select>
+          </Form.Item>
+
+          {/* Buttons */}
+          <Form.Item>
+            <Space className="d-flex justify-content-end w-100">
+              <Button onClick={() => form.resetFields()} disabled={loading}>Reset</Button>
+              <Button className="btn btn-success" htmlType="submit" loading={loading}>
+                Save Category
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Drawer>
     </div>
   );
 }

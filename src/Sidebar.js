@@ -2,9 +2,9 @@ import React from 'react';
 
 function Sidebar({ activeScreen, handleNavClick, handleLogout }) {
   return (
-    <aside className="col-12 col-md-2 col-lg-2 af-sidebar p-4">
+    <aside className="col-12 col-md-2 col-2 af-sidebar p-3">
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <span className="af-brand">AssetFlow</span>
+        <span className="af-brand">Asset Management</span>
         <span
           className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center"
           style={{ width: 32, height: 32 }}

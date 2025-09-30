@@ -34,6 +34,9 @@ import ServiceTypes from './components/ServiceTypes';
 import ApprovalHierarchies from './components/ApprovalHierarchies';
 import Roles from './components/Roles';
 import Sidebar from './Sidebar';
+import Navbar from './components/Navbar';
+import Header from './components/common/Header';
+import Footer from './components/common/Footer';
 
 function MainApp({ setIsAuthenticated }) {
   const [activeScreen, setActiveScreen] = useState('dashboard');
@@ -48,8 +51,9 @@ function MainApp({ setIsAuthenticated }) {
   };
 
   return (
-    <div className="container-fluid">
-      <div className="row g-0">
+    <div className="container-fluid d-flex flex-column min-vh-100">
+      <Header handleLogout={handleLogout} />
+      <div className="row g-0 flex-grow-1">
         <Sidebar activeScreen={activeScreen} handleNavClick={handleNavClick} handleLogout={handleLogout} />
         <main className="col-12 col-md-10 col-lg-10 p-3 p-lg-4">
           <div className="container-fluid content">
@@ -84,9 +88,11 @@ function MainApp({ setIsAuthenticated }) {
             {activeScreen === 'PaymentMethods' && <PaymentMethods onNavigate={handleNavClick} />}
             {activeScreen === 'ServiceTypes' && <ServiceTypes onNavigate={handleNavClick} />}
             {activeScreen === 'ApprovalHierarchies' && <ApprovalHierarchies onNavigate={handleNavClick} />}
+            {activeScreen === 'navbar' && <Navbar onNavigate={Navbar} />}
           </div>
         </main>
       </div>
+      <Footer />
     </div>
   );
 }

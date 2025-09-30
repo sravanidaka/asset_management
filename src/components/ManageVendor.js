@@ -1,10 +1,128 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaTrash, FaArrowLeft } from "react-icons/fa";
+
+import { Drawer, Form, Input, InputNumber, Select, Button, Space, Table, message } from "antd";
+import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "../App.css";
 
 export default function ManageVendor({ onNavigate }) {
-  // 🔹 State for form fields
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [form] = Form.useForm();
+  const [searchText, setSearchText] = useState("");
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+  });
+  const [dataSource, setDataSource] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 🔹 Fetch categories from API
+  const fetchCategories = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:3000/api/asset-categories");
+      if (!response.ok) {
+        throw new Error("Failed to fetch categories");
+      }
+      const data = await response.json();
+      // Add key property for each item (required by Ant Design Table)
+      const dataWithKeys = data.map((item, index) => ({
+        ...item,
+        key: item.id || item._id || index.toString(),
+      }));
+      setDataSource(dataWithKeys);
+      message.success("Categories loaded successfully");
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      message.error("Failed to load categories");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔹 Fetch data on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // 🔹 Filter data based on search
+  const filteredData = dataSource.filter((item) =>
+    Object.values(item).some((value) =>
+      value.toString().toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
+
+  // 🔹 Table columns with sorting
+  const columns = [
+    {
+      title: "Category Name",
+      dataIndex: "category_name",
+      key: "category_name",
+      sorter: (a, b) => a.category_name.localeCompare(b.category_name),
+    },
+    {
+      title: "Parent Category",
+      dataIndex: "parent_category",
+      key: "parent_category",
+      sorter: (a, b) => a.parent_category.localeCompare(b.parent_category),
+    },
+    {
+      title: "Type (CapEx/OpEx)",
+      dataIndex: "capex_opex",
+      key: "capex_opex",
+      sorter: (a, b) => a.capex_opex.localeCompare(b.capex_opex),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          <Button type="default" size="small" icon={<FaEdit />} />
+          <Button type="primary" danger size="small" icon={<FaTrash />} />
+        </Space>
+      ),
+    },
+  ];
+
+
+  const handleTableChange = (pagination) => {
+    setPagination(pagination);
+  };
+
+  // 🔹 Save Category
+  const handleSave = async (values) => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:3000/api/asset-categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create category");
+      }
+
+      const newCategory = await response.json();
+      message.success("Category created successfully!");
+      
+      // Refresh the table data
+      await fetchCategories();
+      
+      form.resetFields();
+      setDrawerVisible(false);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      message.error("Failed to create category");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔹 Form State
   const [formData, setFormData] = useState({
     vendor_name: "",
     vendor_code: "",
@@ -15,36 +133,19 @@ export default function ManageVendor({ onNavigate }) {
     category: "",
     payment_terms: "",
     tax_id: "",
-    address: "",
+    address: "", 
     notes: "",
   });
 
-  // 🔹 Handle Change
+  // 🔹 Input Change
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🔹 Handle Save
-  const handleSave = (e) => {
-    e.preventDefault();
 
-    // check required fields
-    for (const key in formData) {
-      if (!formData[key]) {
-        alert(`Please fill the required field: ${key.replace("_", " ")}`);
-        return;
-      }
-    }
 
-    console.log("📌 Vendor Data:", formData);
-    // Later -> call API here with formData
-  };
-
-  // 🔹 Handle Reset
+  // 🔹 Reset Form
   const handleReset = () => {
     setFormData({
       vendor_name: "",
@@ -63,20 +164,70 @@ export default function ManageVendor({ onNavigate }) {
 
   return (
     <div className="container-fluid p-1">
-      {/* 🔹 Header Row */}
+      {/* 🔹 Header */}
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className=" mb-1">Manage Vendors</h2>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            className="btn btn-success px-4"
+            onClick={() => onNavigate("settings")}
+          >
+            <FaArrowLeft /> Back
+          </button>
+          <h2 className="mb-1">Manage Vendors</h2>
+        </div>
         <div className="d-flex gap-2">
           <button className="btn btn-success px-4">All Vendors</button>
           <button className="btn btn-success px-4">All Categories</button>
+          <button
+            className="btn btn-success px-4"
+            onClick={() => setDrawerVisible(true)}
+          >
+            +Create Vendor
+          </button>
         </div>
       </div>
 
-      {/* 🔹 Create / Edit Vendor Form */}
-      <form className="card custom-shadow mb-3" onSubmit={handleSave}>
-        <div className="card-body">
-          <h5 className="fs-4 mb-3">Create Vendor</h5>
+      {/* 🔹 Vendor Directory */}
+      <div className="card custom-shadow mb-3">
+      <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5 className="fs-4 mb-0">Categories</h5>
+            <Input
+              placeholder="Search categories..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 300 }}
+              allowClear
+            />
+          </div>
+          <Table
+            columns={columns}
+            dataSource={filteredData}
+            loading={loading}
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+              pageSizeOptions: ['5', '10', '20', '50', '100'],
+            }}
+            onChange={handleTableChange}
+            bordered
+            size="middle"
+          />
+        </div>
+      </div>
 
+      {/* 🔹 Drawer with Form */}
+      <Drawer
+        title="Create Vendor"
+        placement="right"
+        width={600}
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+      >
+        <form onSubmit={handleSave}>
           {/* Row 1 */}
           <div className="row mb-3">
             <div className="col-md-4">
@@ -90,7 +241,6 @@ export default function ManageVendor({ onNavigate }) {
                 value={formData.vendor_name}
                 onChange={handleChange}
                 required
-                placeholder="e.g., Tech Solutions"
               />
             </div>
             <div className="col-md-4">
@@ -104,7 +254,6 @@ export default function ManageVendor({ onNavigate }) {
                 value={formData.vendor_code}
                 onChange={handleChange}
                 required
-                placeholder="e.g., TS-001"
               />
             </div>
             <div className="col-md-4">
@@ -138,7 +287,6 @@ export default function ManageVendor({ onNavigate }) {
                 value={formData.contact}
                 onChange={handleChange}
                 required
-                placeholder="e.g., John Doe"
               />
             </div>
             <div className="col-md-4">
@@ -152,7 +300,6 @@ export default function ManageVendor({ onNavigate }) {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                placeholder="e.g., john@tech.com"
               />
             </div>
             <div className="col-md-4">
@@ -166,7 +313,6 @@ export default function ManageVendor({ onNavigate }) {
                 value={formData.phone}
                 onChange={handleChange}
                 required
-                placeholder="e.g., +1-555-1234"
               />
             </div>
           </div>
@@ -218,12 +364,11 @@ export default function ManageVendor({ onNavigate }) {
                 value={formData.tax_id}
                 onChange={handleChange}
                 required
-                placeholder="e.g., 12-3456789"
               />
             </div>
           </div>
 
-          {/* Row 4 */}
+          /* Row 4 */
           <div className="row mb-3">
             <div className="col-md-12">
               <label className="form-label">
@@ -236,12 +381,11 @@ export default function ManageVendor({ onNavigate }) {
                 value={formData.address}
                 onChange={handleChange}
                 required
-                placeholder="e.g., 123 Main St, New York"
               />
             </div>
           </div>
 
-          {/* Row 5 */}
+          /* Row 5 */
           <div className="row mb-3">
             <div className="col-md-12">
               <label className="form-label">
@@ -250,95 +394,29 @@ export default function ManageVendor({ onNavigate }) {
               <textarea
                 name="notes"
                 className="form-control"
+                rows="3"
                 value={formData.notes}
                 onChange={handleChange}
                 required
-                placeholder="e.g., Preferred vendor..."
-                rows="3"
               ></textarea>
             </div>
           </div>
 
-          {/* Buttons */}
+          /* Buttons */
           <div className="d-flex justify-content-end gap-2">
-            <button type="button" className="btn btn-secondary px-4" onClick={handleReset}>
+            <button
+              type="button"
+              className="btn btn-secondary px-4"
+              onClick={handleReset}
+            >
               Reset
             </button>
             <button type="submit" className="btn btn-primary px-4">
               Save Vendor
             </button>
           </div>
-        </div>
-      </form>
-
-      {/* 🔹 Vendor Directory Table */}
-      <div className="card custom-shadow mb-3 position-relative">
-        <div className="card-body">
-          <h5 className="fs-4 mb-3">Vendor Directory</h5>
-          <table className="table table-bordered table-hover">
-            <thead className="table-light">
-              <tr>
-                <th>Vendor</th>
-                <th>Category</th>
-                <th>Contact</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Tech Solutions</td>
-                <td>Hardware Supplier</td>
-                <td>John Doe</td>
-                <td>Active</td>
-                <td>
-                  <button className="btn btn-light btn-sm me-2">
-                    <FaEdit />
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>Supply Co.</td>
-                <td>Logistics</td>
-                <td>Jane Smith</td>
-                <td>Active</td>
-                <td>
-                  <button className="btn btn-light btn-sm me-2">
-                    <FaEdit />
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>Equip Inc.</td>
-                <td>Hardware Supplier</td>
-                <td>Bob Johnson</td>
-                <td>Archived</td>
-                <td>
-                  <button className="btn btn-light btn-sm me-2">
-                    <FaEdit />
-                  </button>
-                  <button className="btn btn-danger btn-sm">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <button
-          className="btn-light btn-sm px-5 position-absolute"
-          style={{ bottom: "8px", right: "45px" }}
-          onClick={() => onNavigate("settings")}
-        >
-          Back
-        </button>
-      </div>
+        </form>
+      </Drawer>
     </div>
   );
 }
