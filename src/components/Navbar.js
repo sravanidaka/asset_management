@@ -17,7 +17,7 @@ const Navbar = ({ children }) => {
         <h2>Asset Management</h2>
         <nav className="nav flex-column">
           <Link to="/" className="nav-link">Dashboard</Link>
-          <Link to="/register" className="nav-link">Regiscjvhcdjgvhdjghdfjkghdkgdkhgkdgkdhgkhjter</Link>
+          <Link to="/register" className="nav-link">Register</Link>
           <Link to="/addnew" className="nav-link">Add New</Link>
           <Link to="/procure" className="nav-link">Procure</Link>
           <Link to="/allocate" className="nav-link">Allocate</Link>

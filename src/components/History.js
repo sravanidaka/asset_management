@@ -392,20 +392,36 @@ const History = () => {
           <Button
             type="link"
             icon={<FaEye />}
-            onClick={() => console.log('View', record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('View', record);
+            }}
           />
           <Button
             type="link"
             icon={<FaEdit />}
-            onClick={() => handleEdit(record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record);
+            }}
           />
           <Popconfirm
             title="Are you sure you want to delete this maintenance record?"
-            onConfirm={() => handleDelete(record)}
+            onConfirm={(e) => {
+              e?.stopPropagation();
+              handleDelete(record);
+            }}
             okText="Yes"
             cancelText="No"
           >
-            <Button type="link" danger icon={<FaTrash />}>Delete</Button>
+            <Button 
+              type="link" 
+              danger 
+              icon={<FaTrash />}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Delete
+            </Button>
           </Popconfirm>
         </Space>
       ),
@@ -417,16 +433,11 @@ const History = () => {
       
 
       {/* Title and Description */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex justify-content-between align-items-start mb-2">
         <div>
           <h2 className="mb-1">History</h2>
           <p className="mt-0 text-muted">View the complete history of assets.</p>
         </div>
-      </div>
-
-      {/* Actions Bar */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <div></div>
         <div className="d-flex gap-2">
           <Button
             type="primary"
@@ -440,7 +451,7 @@ const History = () => {
       </div>
 
       {/* Ant Design Table */}
-      <div className="card shadow-sm">
+      <div className="card shadow-sm mt-2">
         <div className="card-body">
           <Table
             columns={columns}

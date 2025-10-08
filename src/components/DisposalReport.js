@@ -454,20 +454,36 @@ const DisposalReport = () => {
           <Button
             type="link"
             icon={<FaEye />}
-            onClick={() => console.log('View', record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('View', record);
+            }}
           />
           <Button
             type="link"
             icon={<FaEdit />}
-            onClick={() => handleEdit(record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record);
+            }}
           />
           <Popconfirm
             title="Are you sure you want to delete this disposal record?"
-            onConfirm={() => handleDelete(record)}
+            onConfirm={(e) => {
+              e?.stopPropagation();
+              handleDelete(record);
+            }}
             okText="Yes"
             cancelText="No"
           >
-            <Button type="link" danger icon={<FaTrash />}>Delete</Button>
+            <Button 
+              type="link" 
+              danger 
+              icon={<FaTrash />}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Delete
+            </Button>
           </Popconfirm>
         </Space>
       ),

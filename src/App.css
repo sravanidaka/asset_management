@@ -293,12 +293,12 @@ label.small {
   background-color: #ffffff;
   border-right: 1px solid #e9ecef;
   position: fixed;
-  top: 70px; /* Account for fixed header height */
+  top: 0; /* Start from very top of page */
   left: 0;
   align-self: flex-start;
-  z-index: 100;
+  z-index: 1000; /* Higher z-index to overlay header */
   width: 280px; /* Explicit width for consistency */
-  max-height: calc(100vh - 70px); /* Full viewport height minus header */
+  height: 100vh; /* Full viewport height */
   overflow-y: auto; /* Scroll only when content overflows */
   scrollbar-width: thin; /* For Firefox */
   scrollbar-color: #ccc #f1f1f1; /* For Firefox */
@@ -1212,19 +1212,54 @@ header .container-fluid {
 
 /* Ensure main content doesn't overlap with header and sidebar */
 .main-content {
-  margin-top: 70px !important; /* Account for fixed header height */
+  margin-top: 0 !important; /* No top margin since sidebar overlays header */
   margin-left: 280px; /* Account for fixed sidebar width */
   padding: 20px;
-  min-height: calc(100vh - 70px);
+  padding-top: 10px; /* Further reduced top padding */
+  min-height: 100vh; /* Full viewport height */
   transition: margin-left 0.3s ease;
+  position: relative;
+  z-index: 1; /* Ensure content is above background */
 }
 
 /* Ensure main content doesn't overlap with header and sidebar */
 main {
-  margin-top: 70px; /* Account for fixed header height */
+  margin-top: 0; /* No top margin since sidebar overlays header */
   margin-left: 280px; /* Account for fixed sidebar width */
   padding-top: 0;
-  min-height: calc(100vh - 70px);
+  min-height: 100vh; /* Full viewport height */
+}
+
+/* Ensure main content headings are visible */
+.main-content h1,
+.main-content h2,
+.main-content h3,
+.main-content h4,
+.main-content h5,
+.main-content h6 {
+  color: #333 !important;
+  font-weight: 600 !important;
+  margin-bottom: 1rem !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Dashboard specific heading styles */
+.dashboard-container h2 {
+  color: #333 !important;
+  font-weight: 500 !important;
+  font-size: 2rem !important;
+  margin-bottom: 0.5rem !important;
+  position: relative;
+  z-index: 2;
+}
+
+.dashboard-container p {
+  color: #666 !important;
+  font-size: 1.1rem !important;
+  margin-bottom: 2rem !important;
+  position: relative;
+  z-index: 2;
 }
 
 /* Ensure container doesn't constrain header and footer */
@@ -1256,13 +1291,14 @@ header, footer {
   background-color: #ffffff;
   border-right: 1px solid #e9ecef;
   position: fixed;
-  top: 70px; /* Account for fixed header */
+  top: 0; /* Start from very top of page */
   left: 0;
   align-self: flex-start;
-  z-index: 100;
+  z-index: 1000; /* Higher z-index to overlay header */
   width: 280px;
-  max-height: calc(100vh - 70px);
+  height: 100vh; /* Full viewport height */
   overflow-y: auto;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
   display: flex;
   flex-direction: column;
   /* Hide scrollbar for webkit browsers */
@@ -1280,6 +1316,14 @@ header, footer {
   border-bottom: 1px solid #e9ecef;
   background-color: #f8f9fa;
   white-space: nowrap; /* Keep "Asset Management" in one line */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: -12px -12px 0 -12px; /* Extend to sidebar edges */
+  padding: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .af-nav {
@@ -1287,6 +1331,9 @@ header, footer {
   padding: 1rem 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  max-height: calc(100vh - 120px); /* Account for sticky header */
 }
 
 .af-nav .nav-link {
@@ -1298,6 +1345,9 @@ header, footer {
   border: 1px solid transparent;
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .af-nav .nav-link:hover {
@@ -1439,22 +1489,249 @@ header, footer {
   border-color: #ccc !important;
 }
 
-/* Responsive Sidebar */
-@media (max-width: 768px) {
+/* Responsive Design - Enhanced */
+/* Large Laptops (1200px and above) */
+@media (min-width: 1200px) {
   .af-sidebar {
     width: 280px;
-    position: fixed;
-    top: 70px;
-    z-index: 1000;
-    height: calc(100vh - 70px);
   }
   
   .main-content {
-    margin-left: 0; /* Remove sidebar margin on mobile */
+    margin-left: 280px;
+    padding: 20px;
+    padding-top: 10px; /* Consistent reduced top padding */
+  }
+  
+  header .container-fluid {
+    padding-left: 300px !important;
+  }
+}
+
+/* Laptops (992px to 1199px) */
+@media (max-width: 1199px) and (min-width: 992px) {
+  .af-sidebar {
+    width: 260px;
+  }
+  
+  .main-content {
+    margin-left: 260px;
+    padding: 18px;
+    padding-top: 8px; /* Reduced top padding for laptops */
   }
   
   main {
-    margin-left: 0; /* Remove sidebar margin on mobile */
+    margin-left: 260px;
+  }
+  
+  header .container-fluid {
+    padding-left: 280px !important;
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1.7rem !important;
+    font-weight: 500 !important;
+  }
+}
+
+/* Tablets (768px to 991px) */
+@media (max-width: 991px) and (min-width: 768px) {
+  .af-sidebar {
+    width: 220px;
+  }
+  
+  .main-content {
+    margin-left: 220px;
+    padding: 15px;
+    padding-top: 8px; /* Reduced top padding for tablets */
+  }
+  
+  main {
+    margin-left: 220px;
+  }
+  
+  header .container-fluid {
+    padding-left: 240px !important;
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1.5rem !important;
+    font-weight: 500 !important;
+  }
+  
+  .dashboard-container p {
+    font-size: 0.95rem !important;
+  }
+  
+  /* Tablet-specific dashboard grid */
+  .dashboard-container .row {
+    margin: 0 -8px;
+  }
+  
+  .dashboard-container .col-md-4 {
+    padding: 0 8px;
+    margin-bottom: 16px;
+  }
+  
+  /* Card adjustments for tablets */
+  .card, .af-card, .custom-card {
+    padding: 15px;
+    margin-bottom: 16px;
+  }
+}
+
+/* Mobile Devices (768px and below) */
+@media (max-width: 768px) {
+  .af-sidebar {
+    width: 100%;
+    position: fixed;
+    top: 0;
+    z-index: 1000;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    display: block !important;
+  }
+  
+  .af-sidebar.open {
+    transform: translateX(0);
+  }
+  
+  /* Mobile sidebar backdrop */
+  .sidebar-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: none;
+  }
+  
+  .sidebar-backdrop.show {
+    display: block;
+  }
+  
+  .main-content {
+    margin-left: 0;
+    padding: 12px;
+    padding-top: 5px; /* Minimal top padding for mobile */
+  }
+  
+  main {
+    margin-left: 0;
+  }
+  
+  header .container-fluid {
+    padding-left: 20px !important;
+  }
+  
+  /* Mobile menu button - show on mobile */
+  .mobile-menu-btn {
+    display: block !important;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 1001;
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  
+  .mobile-menu-btn:hover {
+    background: #218838;
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .dashboard-container p {
+    font-size: 0.85rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Mobile dashboard grid - single column */
+  .dashboard-container .row {
+    margin: 0 -6px;
+  }
+  
+  .dashboard-container .col-md-4 {
+    padding: 0 6px;
+    margin-bottom: 12px;
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  
+  /* Card adjustments for mobile */
+  .card, .af-card, .custom-card {
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+  
+  /* Chart adjustments for mobile */
+  .dashboard-container canvas {
+    max-height: 200px !important;
+  }
+  
+  /* Mobile sticky header */
+  .sidebar-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+  }
+}
+
+/* Small Mobile Devices (576px and below) */
+@media (max-width: 576px) {
+  .main-content {
+    padding: 8px;
+    padding-top: 3px; /* Minimal top padding for small mobile */
+  }
+  
+  header .container-fluid {
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1.2rem !important;
+    font-weight: 500 !important;
+    margin-bottom: 0.3rem !important;
+  }
+  
+  .dashboard-container p {
+    font-size: 0.8rem !important;
+    margin-bottom: 0.8rem !important;
+  }
+  
+  /* Smaller cards on small mobile */
+  .card, .af-card, .custom-card {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+  }
+  
+  /* Adjust header elements for small screens */
+  .mobile-menu-btn {
+    top: 10px;
+    left: 10px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+  
+  /* Even smaller charts on small mobile */
+  .dashboard-container canvas {
+    max-height: 150px !important;
   }
 }
 
@@ -1477,6 +1754,123 @@ header, footer {
 
 .af-sidebar .nav-link:hover::after {
   left: 100%;
+}
+
+/* Sidebar Dropdown Styles */
+.af-section-title {
+  padding: 10px 12px;
+  margin: 4px 0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  color: #2d5a27;
+  background-color: #f0f8f0;
+  border: 1px solid #d4edda;
+  position: relative;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.af-section-title:hover {
+  background-color: #d4edda;
+  color: #155724;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-dropdown {
+  margin-left: 15px;
+  padding-left: 15px;
+  margin-top: 5px;
+}
+
+.nav-dropdown .nav-link {
+  padding: 8px 15px;
+  margin: 3px 0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: #495057;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.nav-dropdown .nav-link:hover {
+  background-color: #e8f5e8;
+  color: #28a745;
+  transform: translateX(6px);
+  text-decoration: none;
+}
+
+.nav-dropdown .nav-link.active {
+  background-color: #28a745;
+  color: white;
+  font-weight: 600;
+  transform: translateX(6px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.nav-dropdown .nav-link.active:hover {
+  background-color: #218838;
+  color: white;
+}
+
+.nav-section {
+  margin-bottom: 8px;
+}
+
+/* Main navigation links (like Dashboard) */
+.af-nav .nav-link {
+  padding: 10px 15px;
+  margin: 3px 0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: #495057;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.af-nav .nav-link:hover {
+  background-color: #e8f5e8;
+  color: #28a745;
+  transform: translateX(4px);
+  text-decoration: none;
+}
+
+.af-nav .nav-link.active {
+  background-color: #28a745;
+  color: white;
+  font-weight: 600;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.af-nav .nav-link.active:hover {
+  background-color: #218838;
+  color: white;
 }
 
 /* Enhanced Footer Styles */
@@ -1609,4 +2003,116 @@ body {
 
 .ant-badge-status-processing {
   background-color: #17a2b8;
+}
+
+/* Global layout improvements for all components */
+.container-fluid .d-flex.justify-content-between.align-items-start {
+  margin-bottom: 0.5rem !important;
+}
+
+.container-fluid .card {
+  margin-top: 0.5rem !important;
+}
+
+/* Ensure consistent spacing for all component headers */
+.container-fluid h2 {
+  margin-bottom: 0.25rem !important;
+}
+
+.container-fluid p {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Reports Grid Layout */
+.reports-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.report-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 8px 12px !important;
+  font-size: 0.85rem !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-radius: 6px !important;
+  background-color: #28a745 !important;
+  color: white !important;
+  border: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.report-btn:hover {
+  background-color: #218838 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.report-btn:active {
+  transform: translateY(0) !important;
+}
+
+.report-btn i {
+  font-size: 0.9rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* Prevent event bubbling in table actions */
+.ant-table-tbody > tr > td {
+  position: relative;
+}
+
+.ant-table-tbody > tr > td .ant-space {
+  position: relative;
+  z-index: 1;
+}
+
+.ant-table-tbody > tr > td .ant-btn {
+  position: relative;
+  z-index: 2;
+}
+
+.ant-table-tbody > tr > td .ant-popconfirm {
+  position: relative;
+  z-index: 3;
+}
+
+/* Responsive Reports Grid */
+@media (max-width: 768px) {
+  .reports-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 6px;
+  }
+  
+  .report-btn {
+    font-size: 0.8rem !important;
+    padding: 6px 10px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .reports-grid {
+    gap: 4px;
+  }
+  
+  .report-btn {
+    font-size: 0.75rem !important;
+    padding: 5px 8px !important;
+  }
+  
+  .report-btn i {
+    font-size: 0.8rem !important;
+  }
 }

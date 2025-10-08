@@ -293,17 +293,29 @@ const Register = () => {
             size="small" 
             icon={<FaEye />}
             title="View"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('View clicked for record:', record);
+            }}
           />
           <Button 
             type="default" 
             size="small" 
             icon={<FaEdit />}
             title="Edit"
-            onClick={() => showDrawer(record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              showDrawer(record);
+            }}
           />
           <Popconfirm
             title="Are you sure to delete this asset?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={(e) => {
+              e?.stopPropagation();
+              handleDelete(record.id);
+            }}
+            okText="Yes"
+            cancelText="No"
           >
             <Button 
               type="primary" 
@@ -311,6 +323,7 @@ const Register = () => {
               size="small" 
               icon={<FaTrash />}
               title="Delete"
+              onClick={(e) => e.stopPropagation()}
             />
           </Popconfirm>
         </Space>
@@ -716,24 +729,24 @@ const Register = () => {
 
   return (
     <div className="container-fluid p-1">
-      <h2 className="mb-1">Asset Register</h2>
-      <p className="mt-0">The core screen where all assets are listed and searchable.</p>
-
-      <div className="actions-bar d-flex justify-content-between align-items-center mb-2">
-        <div></div>
+      <div className="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <h2 className="mb-1">Asset Register</h2>
+          <p className="mt-0">The core screen where all assets are listed and searchable.</p>
+        </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => showDrawer()}
         >
-          Add   Asset
+          Add Asset
         </Button>
-          </div>
+      </div>
 
-      <div className="card af-card mt-3">
+      <div className="card af-card mt-2">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5 className="card-title mb-0">Asset List</h5>
-          </div>
+        </div>
         <Table
           columns={columns}
           dataSource={assets}
@@ -957,7 +970,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="purchase_date"
-                label="Purchase Date"
+                label=" Purchase Date"
                 rules={[
                   { 
                     validator: (_, value) => {
@@ -981,8 +994,58 @@ const Register = () => {
             </Col>
             <Col span={8}>
               <Form.Item
+                name="installation_date"
+                label=" Installation Date"
+                rules={[
+                  { 
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve();
+                      if (!isValidDate(value)) {
+                        return Promise.reject(new Error('Please enter a valid date'));
+                      }
+                      if (isDateInFuture(value)) {
+                        return Promise.reject(new Error('Installation date cannot be in the future'));
+                      }
+                      if (isDateBefore(value, '1900-01-01')) {
+                        return Promise.reject(new Error('Installation date cannot be before 1900'));
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <Input type="date" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="warranty_start_date"
+                label=" Warranty Start Date"
+                rules={[
+                  { 
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve();
+                      if (!isValidDate(value)) {
+                        return Promise.reject(new Error('Please enter a valid date'));
+                      }
+                      if (isDateInFuture(value)) {
+                        return Promise.reject(new Error('Warranty start date cannot be in the future'));
+                      }
+                      if (isDateBefore(value, '1900-01-01')) {
+                        return Promise.reject(new Error('Warranty start date cannot be before 1900'));
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <Input type="date" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
                 name="warranty_expiry"
-                label="Warranty Expiry Date"
+                label=" Warranty Expiry Date"
                 rules={[
                   { 
                     validator: (_, value) => {
@@ -1004,7 +1067,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="amc_expiry_date"
-                label="AMC Expiry Date"
+                label=" AMC Expiry Date"
                 rules={[
                   { 
                     validator: (_, value) => {
@@ -1014,31 +1077,6 @@ const Register = () => {
                       }
                       if (isDateInPast(value)) {
                         return Promise.reject(new Error('AMC expiry date cannot be in the past'));
-                      }
-                      return Promise.resolve();
-                    }
-                  }
-                ]}
-              >
-                <Input type="date" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="installation_date"
-                label="Installation Date"
-                rules={[
-                  { 
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve();
-                      if (!isValidDate(value)) {
-                        return Promise.reject(new Error('Please enter a valid date'));
-                      }
-                      if (isDateInFuture(value)) {
-                        return Promise.reject(new Error('Installation date cannot be in the future'));
-                      }
-                      if (isDateBefore(value, '1900-01-01')) {
-                        return Promise.reject(new Error('Installation date cannot be before 1900'));
                       }
                       return Promise.resolve();
                     }
@@ -1072,31 +1110,6 @@ const Register = () => {
                 ]}
               >
                 <Input type="number" placeholder="Enter warranty period in months" min="0" max="1200" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="warranty_start_date"
-                label="Warranty Start Date"
-                rules={[
-                  { 
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve();
-                      if (!isValidDate(value)) {
-                        return Promise.reject(new Error('Please enter a valid date'));
-                      }
-                      if (isDateInFuture(value)) {
-                        return Promise.reject(new Error('Warranty start date cannot be in the future'));
-                      }
-                      if (isDateBefore(value, '1900-01-01')) {
-                        return Promise.reject(new Error('Warranty start date cannot be before 1900'));
-                      }
-                      return Promise.resolve();
-                    }
-                  }
-                ]}
-              >
-                <Input type="date" />
               </Form.Item>
             </Col>
           </Row>
@@ -1135,8 +1148,34 @@ const Register = () => {
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item
+                name="original_purchase_price"
+                label=" Original Purchase Price"
+                rules={[
+                  { 
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve();
+                      const numValue = parseFloat(value);
+                      if (isNaN(numValue)) {
+                        return Promise.reject(new Error('Please enter a valid number'));
+                      }
+                      if (numValue < 0) {
+                        return Promise.reject(new Error('Price cannot be negative'));
+                      }
+                      if (numValue > 999999999) {
+                        return Promise.reject(new Error('Price cannot exceed 999,999,999'));
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <Input type="number" placeholder="Enter original purchase price" min="0" max="999999999" step="0.01" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
                 name="current_value"
-                label="Current Book Value"
+                label=" Current Book Value"
                 rules={[
                   { required: true, message: "Please enter current book value" },
                   { 
@@ -1158,32 +1197,6 @@ const Register = () => {
                 ]}
               >
                 <Input type="number" placeholder="Enter current value" min="0" max="999999999" step="0.01" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="original_purchase_price"
-                label="Original Purchase Price"
-                rules={[
-                  { 
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve();
-                      const numValue = parseFloat(value);
-                      if (isNaN(numValue)) {
-                        return Promise.reject(new Error('Please enter a valid number'));
-                      }
-                      if (numValue < 0) {
-                        return Promise.reject(new Error('Price cannot be negative'));
-                      }
-                      if (numValue > 999999999) {
-                        return Promise.reject(new Error('Price cannot exceed 999,999,999'));
-                      }
-                      return Promise.resolve();
-                    }
-                  }
-                ]}
-              >
-                <Input type="number" placeholder="Enter original purchase price" min="0" max="999999999" step="0.01" />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -1215,7 +1228,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="depreciation_method"
-                label="Depreciation Method"
+                label=" Depreciation Method"
                 rules={[
                   { max: 50, message: "Depreciation method cannot exceed 50 characters" },
                   { pattern: /^[a-zA-Z0-9\s\-_]+$/, message: "Depreciation method contains invalid characters" }
@@ -1238,7 +1251,7 @@ const Register = () => {
             <Col span={12}>
               <Form.Item
                 name="invoice_receipt"
-                label="Invoice and Receipt Copies"
+                label="Invoice/Receipt Copies"
                 rules={[
                   { required: true, message: "Please upload invoice and receipt copies" }
                 ]}

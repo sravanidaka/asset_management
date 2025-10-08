@@ -3,7 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { FaUserCircle, FaSignOutAlt, FaBell, FaCog, FaChevronDown } from "react-icons/fa";
 import { Dropdown, Badge, Avatar } from "antd";
 
-const Header = ({ handleLogout, user = { name: "John Doe", } }) => {
+const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar }) => {
   const [notifications] = useState([
     { id: 1, message: "New asset request pending approval", time: "2 min ago" },
     { id: 2, message: "Maintenance scheduled for tomorrow", time: "1 hour ago" },
@@ -92,21 +92,32 @@ const Header = ({ handleLogout, user = { name: "John Doe", } }) => {
   ];
 
   return (
-    <header className="bg-dark border-bottom shadow-sm py-3 px-4 sticky-top" style={{ 
+    <header className="bg-white border-bottom shadow-sm py-2 px-4 sticky-top" style={{ 
       width: '100vw', 
       marginLeft: 'calc(-50vw + 50%)', 
       marginRight: 'calc(-50vw + 50%)',
-      zIndex: 1000,
+      zIndex: 999, /* Lower z-index than sidebar */
       position: 'sticky',
       top: 0,
       left: 0,
-      right: 0
+      right: 0,
+      height: '60px', /* Fixed height for consistency */
+      minHeight: '60px',
+      backgroundColor: '#ffffff'
     }}>
-      <div className="container-fluid d-flex justify-content-between align-items-center" style={{ paddingLeft: 0, paddingRight: 0 }}>
+      <div className="container-fluid d-flex justify-content-between align-items-center" style={{ paddingLeft: '300px', paddingRight: 0 }}>
+        {/* Mobile Menu Button */}
+        <button 
+          className="mobile-menu-btn d-none" 
+          onClick={onToggleSidebar}
+        >
+          ☰
+        </button>
+        
         {/* Logo / Title */}
         <div className="d-flex align-items-center gap-3">
           <div className="d-flex flex-column">
-            <h1 className="h5 mb-0 fw-bold text-white">Asset Management System</h1>
+            <h1 className="h5 mb-0 fw-bold text-dark">Asset Management </h1>
             {/* <small className="text-light">{currentDate} IST</small> */}
           </div>
         </div>
@@ -119,11 +130,33 @@ const Header = ({ handleLogout, user = { name: "John Doe", } }) => {
             placement="bottomRight"
             trigger={["click"]}
           >
-            <button className="btn btn-outline-light btn-sm d-flex align-items-center gap-2 rounded-pill">
+            <div 
+              className="d-flex align-items-center justify-content-center"
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: 'transparent',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                position: 'relative',
+                border: '2px solid #e9ecef'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#f8f9fa';
+                e.target.style.borderColor = '#28a745';
+                e.target.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.borderColor = '#e9ecef';
+                e.target.style.transform = 'scale(1)';
+              }}
+            >
               <Badge count={notifications.length} size="small">
-                <FaBell size={16} />
+                <FaBell size={16} style={{ color: '#495057' }} />
               </Badge>
-            </button>
+            </div>
           </Dropdown>
 
           {/* User Profile Dropdown */}
@@ -132,17 +165,33 @@ const Header = ({ handleLogout, user = { name: "John Doe", } }) => {
             placement="bottomRight"
             trigger={["click"]}
           >
-            <div className="d-flex align-items-center gap-2 btn btn-outline-light rounded-pill px-3 py-2 border-0 bg-light">
+            <div 
+              className="d-flex align-items-center justify-content-center"
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                border: '2px solid #e9ecef'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#e9ecef';
+                e.target.style.transform = 'scale(1.05)';
+                e.target.style.borderColor = '#28a745';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#f8f9fa';
+                e.target.style.transform = 'scale(1)';
+                e.target.style.borderColor = '#e9ecef';
+              }}
+            >
               <Avatar 
-                size={32} 
+                size={24} 
                 icon={<FaUserCircle />} 
-                className="bg-primary"
+                style={{ color: '#495057' }}
               />
-              <div className="d-flex flex-column align-items-start">
-                <span className="fw-semibold text-dark small">{user.name}</span>
-                <small className="text-muted">{user.role}</small>
-              </div>
-              <FaChevronDown size={12} className="text-muted" />
             </div>
           </Dropdown>
         </div>

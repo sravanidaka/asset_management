@@ -261,11 +261,15 @@ const User = () => {
             type="default" 
             size="small" 
             icon={<FaEdit />} 
-            onClick={() => showDrawer(record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              showDrawer(record);
+            }}
           />
           <Popconfirm
             title="Are you sure to delete this user?"
-            onConfirm={async () => {
+            onConfirm={async (e) => {
+              e?.stopPropagation();
               try {
                 await axios.delete("http://202.53.92.35:5004/api/users", {
                   data: { id: record.id }
@@ -277,12 +281,15 @@ const User = () => {
                 message.error("Failed to delete user");
               }
             }}
+            okText="Yes"
+            cancelText="No"
           >
             <Button 
               type="primary" 
               danger 
               size="small" 
               icon={<FaTrash />}
+              onClick={(e) => e.stopPropagation()}
             />
           </Popconfirm>
         </Space>
@@ -375,42 +382,40 @@ const User = () => {
 
   return (
       <div className="container-fluid p-1">
-        <h2 className="mb-1">Users</h2>
-        <p className="mt-0">Control access to asset screens and actions.</p>
-      
-
-      <div className="actions-bar d-flex justify-content-between align-items-center mb-2">
-        <div className="search-box d-flex align-items-center">
-          <Input
-            placeholder="Search users..."
-            prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 300 }}
-            allowClear
-          />
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h2 className="mb-1">Users</h2>
+            <p className="mt-0">Control access to asset screens and actions.</p>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <Input
+              placeholder="Search users..."
+              prefix={<SearchOutlined />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: 250 }}
+              allowClear
+            />
+            <Button
+              onClick={fetchUsers}
+              loading={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => showDrawer()}
+            >
+              Add New User
+            </Button>
+          </div>
         </div>
-        <Space>
-          <Button
-            onClick={fetchUsers}
-            loading={loading}
-          >
-            Refresh
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => showDrawer()}
-          >
-            Add New User
-          </Button>
-        </Space>
-      </div>
 
-      <div className="card af-card mt-3">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="card-title mb-0">User List</h5>
-        </div>
+        <div className="card af-card mt-2">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5 className="card-title mb-0">User List</h5>
+          </div>
         <Table
           columns={columns}
           dataSource={filteredUsers}

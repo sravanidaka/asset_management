@@ -34,7 +34,7 @@ import PaymentMethods from './components/PaymentMethods';
 import ServiceTypes from './components/ServiceTypes';
 import ApprovalHierarchies from './components/ApprovalHierarchies';
 import Roles from './components/Roles';
-import Sidebar from './Sidebar';
+import Sidebar from './components/common/Sidebar';
 import Navbar from './components/Navbar';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
@@ -43,6 +43,24 @@ import Footer from './components/common/Footer';
 function Layout({ setIsAuthenticated }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Handle window resize to show/hide sidebar appropriately
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+
+    // Set initial state based on screen size
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = () => {
     // Commented out logout functionality - no authentication needed
@@ -56,6 +74,11 @@ function Layout({ setIsAuthenticated }) {
     console.log(`Navigating to: ${screen}`);
     navigate(`/${screen}`);
     
+    // Close sidebar on mobile after navigation
+    if (window.innerWidth <= 768) {
+      setSidebarOpen(false);
+    }
+    
     setTimeout(() => {
       window.scrollTo({
         top: 0,
@@ -63,6 +86,10 @@ function Layout({ setIsAuthenticated }) {
         behavior: 'smooth'
       });
     }, 100); 
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   // Get current screen from URL path
@@ -73,8 +100,20 @@ function Layout({ setIsAuthenticated }) {
 
   return (
     <div className="app-layout">
-      <Header handleLogout={handleLogout} />
-      <Sidebar activeScreen={getCurrentScreen()} handleNavClick={handleNavClick} handleLogout={handleLogout} />
+      <Header handleLogout={handleLogout} onToggleSidebar={toggleSidebar} />
+      <Sidebar 
+        activeScreen={getCurrentScreen()} 
+        handleNavClick={handleNavClick} 
+        handleLogout={handleLogout} 
+        isOpen={sidebarOpen}
+      />
+      {/* Mobile backdrop */}
+      {window.innerWidth <= 768 && sidebarOpen && (
+        <div 
+          className="sidebar-backdrop show" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <main className="main-content">
         <div className="container-fluid content">
           <Routes>

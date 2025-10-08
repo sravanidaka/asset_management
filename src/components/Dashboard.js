@@ -432,7 +432,7 @@ export default function Dashboard() {
         </div>
         <div className="col-md-4">
           <Card title="Reports" icon="download" color="info">
-            <div className="d-flex flex-wrap gap-2">
+            <div className="reports-grid">
               <button className="btn report-btn">
                 <i className="bi bi-journal-text me-2" />
                 Asset Register
