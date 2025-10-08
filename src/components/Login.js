@@ -34,13 +34,21 @@ const Login = ({ setIsAuthenticated }) => {
   // Handle login form submission
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    const username = e.target.username.value;
+    const username = e.target.username.value.trim();
     const password = e.target.password.value;
+
+    // Basic validation
+    if (!username || !password) {
+      showToast('Validation Error', 'Please enter both username and password', 'error');
+      return;
+    }
 
     showToast('Logging in...', 'Please wait while we sign you in');
 
     try {
-      const response = await fetch('http://202.53.92.37:5003/api/auth/login', {
+      console.log('Attempting login with:', { username, password: '***' });
+      
+      const response = await fetch('http://202.53.92.35:5004/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,29 +56,68 @@ const Login = ({ setIsAuthenticated }) => {
         body: JSON.stringify({ username, password }),
       });
 
+      const data = await response.json();
+
+      console.log('Login response status:', response.status);
+      console.log('Login response data:', data);
+
       if (response.ok) {
-        const data = await response.json();
         showToast('Login Successful', `Welcome back, ${username}`);
         setIsAuthenticated(true);
         navigate('/');
       } else {
-        showToast('Login Failed', 'Invalid username or password', 'error');
+        const errorMessage = data.message || 'Invalid username or password';
+        showToast('Login Failed', errorMessage, 'error');
       }
     } catch (error) {
-      showToast('Error', 'Something went wrong. Please try again.', 'error');
+      console.error('Login error:', error);
+      showToast('Connection Error', 'Unable to connect to server. Please check your connection.', 'error');
     }
   };
 
   // Handle reset form submission
-  const handleResetSubmit = (e) => {
+  const handleResetSubmit = async (e) => {
     e.preventDefault();
-    const username = e.target.resetUsername.value;
-    showToast('Sending Email...', 'Please wait while we send the reset link');
-    setTimeout(() => {
-      showToast('Email Sent', `Password reset link sent to user: ${username}`);
-      setIsModalActive(false);
-      e.target.reset();
-    }, 1500);
+    const username = e.target.resetUsername.value.trim();
+    const newPassword = e.target.newPassword.value;
+    
+    // Basic validation
+    if (!username || !newPassword) {
+      showToast('Validation Error', 'Please enter both username and new password', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showToast('Validation Error', 'Password must be at least 6 characters long', 'error');
+      return;
+    }
+    
+    showToast('Resetting Password...', 'Please wait while we reset your password');
+
+    try {
+      const response = await fetch('http://202.53.92.35:5004/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, newPassword }),
+      });
+
+      const data = await response.json();
+      console.log('Password reset response:', data);
+
+      if (response.ok) {
+        showToast('Password Reset Successful', `Password has been reset for user: ${username}`);
+        setIsModalActive(false);
+        e.target.reset();
+      } else {
+        const errorMessage = data.message || 'Failed to reset password. Please try again.';
+        showToast('Password Reset Failed', errorMessage, 'error');
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      showToast('Connection Error', 'Unable to connect to server. Please check your connection.', 'error');
+    }
   };
 
   // Close modal on outside click
@@ -134,6 +181,8 @@ const Login = ({ setIsAuthenticated }) => {
             </div>
 
             <button type="submit" className="login-btn">Sign In</button>
+            
+            
           </form>
         </div>
 
@@ -153,14 +202,22 @@ const Login = ({ setIsAuthenticated }) => {
 
             <form id="resetForm" onSubmit={handleResetSubmit}>
               <div className="form-group">
-                <label htmlFor="resetUsername">Email</label>
+                <label htmlFor="resetUsername">Username</label>
                 <div className="input-group">
                   <i className="bi bi-person input-icon"></i>
-                  <input type="text" id="resetUsername" placeholder="Enter your Email" required />
+                  <input type="text" id="resetUsername" placeholder="Enter your Username" required />
                 </div>
               </div>
 
-              <button type="submit" className="reset-btn">Send Reset Link</button>
+              <div className="form-group">
+                <label htmlFor="newPassword">New Password</label>
+                <div className="input-group">
+                  <i className="bi bi-lock input-icon"></i>
+                  <input type="password" id="newPassword" placeholder="Enter new password" required />
+                </div>
+              </div>
+
+              <button type="submit" className="reset-btn">Reset Password</button>
             </form>
 
             <div className="back-to-login">

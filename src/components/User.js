@@ -13,7 +13,9 @@ import {
   Space,
   message,
   Popconfirm,
+  Table,
 } from "antd";
+import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import axios from "axios";
 
 const { Option } = Select;
@@ -25,32 +27,121 @@ const User = () => {
   const [roles, setRoles] = useState([]);
   const [form] = Form.useForm();
   const [editingUser, setEditingUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+  });
 
   // Fetch Users
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const res = await axios.get("http://202.53.92.37:5003/api/users");
-      setUsers(res.data || []);
+      const res = await axios.get("http://202.53.92.35:5004/api/users");
+      
+      console.log('Full API Response:', res.data);
+      console.log('Response keys:', Object.keys(res.data || {}));
+      
+      let usersData = [];
+      
+      // Handle different API response formats
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        usersData = res.data.data;
+        console.log('Using res.data.data format');
+      } else if (res.data?.success && Array.isArray(res.data.users)) {
+        usersData = res.data.users;
+        console.log('Using res.data.users format');
+      } else if (Array.isArray(res.data)) {
+        usersData = res.data;
+        console.log('Using direct array format');
+      } else if (res.data?.users && Array.isArray(res.data.users)) {
+        usersData = res.data.users;
+        console.log('Using res.data.users format');
+      } else {
+        console.error("Unexpected API response format:", res.data);
+        message.error("No users data received from server");
+        setUsers([]);
+        return;
+      }
+      
+      console.log('Raw users data:', usersData);
+      if (usersData.length > 0) {
+        console.log('First user object:', usersData[0]);
+        console.log('First user keys:', Object.keys(usersData[0] || {}));
+      }
+      
+      // Handle empty API response
+      if (usersData.length === 0) {
+        setUsers([]);
+        message.info("No users found");
+        return;
+      }
+      
+      // Transform data to match table column expectations
+      const dataWithKeys = usersData.map((item, index) => {
+        const transformedItem = {
+          key: item.id || index.toString(),
+          id: item.id || item.user_id,
+          name: item.name || item.username || item.user_name,
+          email: item.email || item.email_address,
+          phone: item.phone || item.phone_number || item.mobile,
+          role_name: item.role_name || item.role || item.role_title,
+          status: item.status || item.user_status || item.active_status,
+          // Keep original data for reference
+          ...item
+        };
+        
+        console.log('Transformed item:', transformedItem);
+        return transformedItem;
+      });
+      
+      console.log('Final processed data:', dataWithKeys);
+      setUsers(dataWithKeys);
     } catch (error) {
       console.error("Error fetching users:", error);
+      console.error("Error details:", error.response?.data);
       message.error("Failed to fetch users");
+      setUsers([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Fetch Roles
   const fetchRoles = async () => {
     try {
-      const res = await axios.get(
-        "http://202.53.92.37:5003/api/roles/getRolesList"
-      );
-      if (Array.isArray(res.data)) {
-        setRoles(res.data);
+      const res = await axios.get("http://202.53.92.35:5004/api/roles/getRolesList");
+      
+      let rolesData = [];
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        // API returns {success: true, data: [...]}
+        rolesData = res.data.data;
+      } else if (Array.isArray(res.data)) {
+        // API returns array directly
+        rolesData = res.data;
       } else {
+        console.error("Unexpected roles API response format:", res.data);
+        message.error("No roles data received from server");
+        return;
+      }
+      
+      // Handle empty API response
+      if (rolesData.length === 0) {
+        console.log('API returned empty roles data');
         setRoles([]);
+        message.info("No roles found");
+        return;
+      }
+      
+      setRoles(rolesData);
+      
+      if (rolesData.length > 0) {
+        console.log(`Roles loaded successfully (${rolesData.length} items)`);
       }
     } catch (error) {
       console.error("Error fetching roles:", error);
       message.error("Failed to fetch roles");
+      setRoles([]);
     }
   };
 
@@ -59,16 +150,160 @@ const User = () => {
     fetchRoles();
   }, []);
 
+
+  // Filter data based on search
   const filteredUsers = users.filter((user) =>
-    user.username?.toLowerCase().includes(search.toLowerCase())
+    Object.values(user).some((value) =>
+      value?.toString().toLowerCase().includes(search.toLowerCase())
+    )
   );
+
+  // Column search props
+  const getColumnSearchProps = (dataIndex) => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+      <div style={{ padding: 8 }}>
+        <Input
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => confirm()}
+          style={{ marginBottom: 8, display: 'block' }}
+        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => confirm()}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Search
+          </Button>
+          <Button
+            onClick={() => clearFilters()}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Reset
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: (filtered) => (
+      <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+    ),
+    onFilter: (value, record) =>
+      record[dataIndex]
+        ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
+        : '',
+  });
+
+  // Table columns with sorting and search
+  const columns = [
+    {
+      title: "ID",
+      dataIndex: "id",
+      key: "id",
+      sorter: (a, b) => a.id - b.id,
+      ...getColumnSearchProps('id'),
+    },
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+      sorter: (a, b) => a.name?.localeCompare(b.name),
+      ...getColumnSearchProps('name'),
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+      sorter: (a, b) => a.email?.localeCompare(b.email),
+      ...getColumnSearchProps('email'),
+    },
+    {
+      title: "Phone",
+      dataIndex: "phone",
+      key: "phone",
+      sorter: (a, b) => a.phone?.localeCompare(b.phone),
+      ...getColumnSearchProps('phone'),
+    },
+    {
+      title: "Role",
+      dataIndex: "role_name",
+      key: "role_name",
+      sorter: (a, b) => a.role_name?.localeCompare(b.role_name),
+      ...getColumnSearchProps('role_name'),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      sorter: (a, b) => a.status?.localeCompare(b.status),
+      filters: [
+        { text: 'Active', value: 'Active' },
+        { text: 'Pending', value: 'Pending' },
+        { text: 'Inactive', value: 'Inactive' },
+      ],
+      onFilter: (value, record) => record.status === value,
+      render: (status) => (
+        <span className={`badge ${status === "Active" ? "bg-success" : status === "Pending" ? "bg-warning" : "bg-danger"}`}>
+          {status}
+        </span>
+      ),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          <Button 
+            type="default" 
+            size="small" 
+            icon={<FaEdit />} 
+            onClick={() => showDrawer(record)}
+          />
+          <Popconfirm
+            title="Are you sure to delete this user?"
+            onConfirm={async () => {
+              try {
+                await axios.delete("http://202.53.92.35:5004/api/users", {
+                  data: { id: record.id }
+                });
+                message.success("User deleted successfully");
+                fetchUsers();
+              } catch (error) {
+                console.error("Error deleting user:", error);
+                message.error("Failed to delete user");
+              }
+            }}
+          >
+            <Button 
+              type="primary" 
+              danger 
+              size="small" 
+              icon={<FaTrash />}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  // Handle pagination change
+  const handleTableChange = (pagination) => {
+    setPagination(pagination);
+  };
 
   const showDrawer = (user = null) => {
     setEditingUser(user);
     if (user) {
       form.setFieldsValue({
-        ...user,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
         role_id: user.role_id,
+        status: user.status,
       });
     } else {
       form.resetFields();
@@ -83,91 +318,116 @@ const User = () => {
 
   // Submit form
   const onFinish = async (values) => {
+    setLoading(true);
     try {
       if (editingUser) {
-        await axios.put("http://202.53.92.37:5003/api/users/update", {
+        // For updates, send all fields
+        const updateData = {
           id: editingUser.id,
-          ...values,
-        });
-        message.success("User updated successfully");
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          role_id: values.role_id,
+          status: values.status,
+        };
+        
+        // Only include password if it's provided
+        if (values.password) {
+          updateData.password = values.password;
+        }
+        
+        const response = await axios.put("http://202.53.92.35:5004/api/users", updateData);
+        
+        if (response.data?.success) {
+          message.success("User updated successfully");
+        } else {
+          throw new Error(response.data?.message || "Failed to update user");
+        }
       } else {
-        await axios.post("http://202.53.92.37:5003/api/users", values);
-        message.success("User added successfully");
+        // For new users, send all required fields
+        const createData = {
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          password: values.password,
+          role_id: values.role_id,
+          status: values.status,
+        };
+        
+        const response = await axios.post("http://202.53.92.35:5004/api/users", createData);
+        
+        if (response.data?.success) {
+          message.success("User added successfully");
+        } else {
+          throw new Error(response.data?.message || "Failed to create user");
+        }
       }
       fetchUsers();
       onClose();
     } catch (error) {
       console.error("Error saving user:", error);
-      message.error("Failed to save user");
+      const errorMessage = error.response?.data?.message || error.message || "Failed to save user";
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="container p-1">
       <div className="container-fluid p-1">
         <h2 className="mb-1">Users</h2>
         <p className="mt-0">Control access to asset screens and actions.</p>
-      </div>
+      
 
       <div className="actions-bar d-flex justify-content-between align-items-center mb-2">
         <div className="search-box d-flex align-items-center">
-          <FaSearch className="search-icon me-2" />
-          <input
-            type="text"
+          <Input
             placeholder="Search users..."
-            className="form-control"
+            prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 300 }}
+            allowClear
           />
         </div>
-        <button
-          className="btn-add d-flex align-items-center"
-          onClick={() => showDrawer()}
-        >
-          <FaEdit className="me-2" /> Add New User
-        </button>
+        <Space>
+          <Button
+            onClick={fetchUsers}
+            loading={loading}
+          >
+            Refresh
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => showDrawer()}
+          >
+            Add New User
+          </Button>
+        </Space>
       </div>
 
       <div className="card af-card mt-3">
-        <h5 className="card-title">User List</h5>
-        <table className="table table-bordered table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id}>
-                <td>{user.username}</td>
-                <td>{user.email}</td>
-                <td>{user.phone}</td>
-                <td>{user.role_name}</td>
-                <td>
-                  <span className="status-badge">{user.status}</span>
-                </td>
-                <td className="actions">
-                  <FaEdit
-                    className="icon edit"
-                    onClick={() => showDrawer(user)}
-                  />
-                  <Popconfirm
-                    title="Are you sure to delete this user?"
-                    onConfirm={() => message.info("Delete API not implemented")}
-                  >
-                    <FaTrash className="icon delete" />
-                  </Popconfirm>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h5 className="card-title mb-0">User List</h5>
+        </div>
+        <Table
+          columns={columns}
+          dataSource={filteredUsers}
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            pageSizeOptions: ['5', '10', '20', '50', '100'],
+          }}
+          onChange={handleTableChange}
+          bordered
+          size="middle"
+        />
       </div>
+    
 
       {/* Drawer Form */}
       <Drawer
@@ -199,7 +459,7 @@ const User = () => {
           <Row gutter={16}>
             <Col span={24}>
               <Form.Item
-                name="username"
+                name="name"
                 label="Username"
                 rules={[
                   { required: true, message: "Please enter username" },
@@ -213,6 +473,7 @@ const User = () => {
               </Form.Item>
             </Col>
           </Row>
+
 
           {/* Email */}
           <Row gutter={16}>
@@ -233,26 +494,6 @@ const User = () => {
             </Col>
           </Row>
 
-          {/* Password */}
-          <Row gutter={16}>
-            <Col span={24}>
-              <Form.Item
-                name="password"
-                label="Password"
-                rules={[
-                  { required: true, message: "Please enter password" },
-                  {
-                    pattern: /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
-                    message:
-                      "Password must have 1 uppercase, 1 digit, 1 special character and min 6 chars",
-                  },
-                ]}
-              >
-                <Input.Password placeholder="Enter password" />
-              </Form.Item>
-            </Col>
-          </Row>
-
           {/* Phone */}
           <Row gutter={16}>
             <Col span={24}>
@@ -268,6 +509,25 @@ const User = () => {
                 ]}
               >
                 <Input placeholder="Enter phone" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Password - Required for new users, optional for editing */}
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                name="password"
+                label={editingUser ? "New Password (optional)" : "Password"}
+                rules={[
+                  { required: !editingUser, message: "Please enter password" },
+                  {
+                    min: 6,
+                    message: "Password must be at least 6 characters long",
+                  },
+                ]}
+              >
+                <Input.Password placeholder={editingUser ? "Enter new password (leave blank to keep current)" : "Enter password"} />
               </Form.Item>
             </Col>
           </Row>
@@ -307,6 +567,8 @@ const User = () => {
               </Form.Item>
             </Col>
           </Row>
+
+
         </Form>
       </Drawer>
     </div>

@@ -4,6 +4,14 @@ body {
   background: #fafafa;
   margin: 0;
   padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+/* Ensure html and body don't interfere with full-width elements */
+html, body {
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .content {
@@ -284,12 +292,13 @@ label.small {
   min-height: 100vh;
   background-color: #ffffff;
   border-right: 1px solid #e9ecef;
-  position: sticky;
-  top: 0;
+  position: fixed;
+  top: 70px; /* Account for fixed header height */
+  left: 0;
   align-self: flex-start;
   z-index: 100;
   width: 280px; /* Explicit width for consistency */
-  max-height: 100vh; /* Full viewport height */
+  max-height: calc(100vh - 70px); /* Full viewport height minus header */
   overflow-y: auto; /* Scroll only when content overflows */
   scrollbar-width: thin; /* For Firefox */
   scrollbar-color: #ccc #f1f1f1; /* For Firefox */
@@ -1157,3 +1166,447 @@ label.small {
   margin-left: -10px;
 }
 
+/* Fix for forms going under header */
+.content {
+  padding-top: 15px; /* Reduced padding to account for smaller header */
+}
+
+/* Enhanced Header Styles */
+header {
+  z-index: 1000 !important;
+  position: fixed !important;
+  top: 0 !important;
+  width: 100vw !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  min-height: 70px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 !important;
+  max-width: none !important;
+}
+
+/* Force header to be fixed - override any other styles */
+header.bg-dark {
+  position: fixed !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+}
+
+/* Ensure header content is properly centered */
+header .container-fluid {
+  width: 100%;
+  max-width: none;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  margin: 0;
+}
+
+/* App Layout */
+.app-layout {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Ensure main content doesn't overlap with header and sidebar */
+.main-content {
+  margin-top: 70px !important; /* Account for fixed header height */
+  margin-left: 280px; /* Account for fixed sidebar width */
+  padding: 20px;
+  min-height: calc(100vh - 70px);
+  transition: margin-left 0.3s ease;
+}
+
+/* Ensure main content doesn't overlap with header and sidebar */
+main {
+  margin-top: 70px; /* Account for fixed header height */
+  margin-left: 280px; /* Account for fixed sidebar width */
+  padding-top: 0;
+  min-height: calc(100vh - 70px);
+}
+
+/* Ensure container doesn't constrain header and footer */
+.container-fluid {
+  position: relative;
+}
+
+/* Override container constraints for header and footer */
+header, footer {
+  position: relative;
+  z-index: 1;
+  transform: translateX(0);
+}
+
+/* Removed conflicting styles - using the enhanced styles above */
+
+/* Ensure forms and drawers have proper z-index */
+.ant-drawer {
+  z-index: 1050 !important;
+}
+
+.ant-modal {
+  z-index: 1050 !important;
+}
+
+/* Enhanced Sidebar Styles */
+.af-sidebar {
+  min-height: 100vh;
+  background-color: #ffffff;
+  border-right: 1px solid #e9ecef;
+  position: fixed;
+  top: 70px; /* Account for fixed header */
+  left: 0;
+  align-self: flex-start;
+  z-index: 100;
+  width: 280px;
+  max-height: calc(100vh - 70px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  /* Hide scrollbar for webkit browsers */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Hide scrollbar for webkit browsers */
+.af-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+  white-space: nowrap; /* Keep "Asset Management" in one line */
+}
+
+.af-nav {
+  flex: 1;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.af-nav .nav-link {
+  color: #4a4f57;
+  border-radius: 8px;
+  margin: 2px 8px;
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.af-nav .nav-link:hover {
+  background-color: #f3f4f6;
+  color: #28a745;
+  transform: translateX(2px);
+  border-color: #e9ecef;
+}
+
+.af-nav .nav-link.active {
+  background-color: #eefaf2;
+  color: #198754;
+  border-color: #28a745;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+}
+
+.af-nav .nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: #28a745;
+  border-radius: 0 2px 2px 0;
+}
+
+.logout-link {
+  color: #dc3545 !important;
+  border-top: 1px solid #e9ecef;
+  margin-top: 1rem;
+  padding-top: 1rem !important;
+}
+
+.logout-link:hover {
+  background-color: #f8d7da !important;
+  color: #721c24 !important;
+}
+
+/* Consistent Button Colors - Enhanced */
+.btn,
+.btn-add,
+.btn-apply,
+.btn-clear,
+.export-btn,
+.cancel-btn,
+.save-btn,
+.btn-secondary,
+.btn-sm,
+.card .btn,
+.custom-report-card .btn,
+.report-card .btn,
+.ant-btn {
+  background-color: #28a745 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 1.2rem !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+}
+
+.btn:hover,
+.btn-add:hover,
+.btn-apply:hover,
+.btn-clear:hover,
+.export-btn:hover,
+.cancel-btn:hover,
+.save-btn:hover,
+.btn-secondary:hover,
+.btn-sm:hover,
+.card .btn:hover,
+.custom-report-card .btn:hover,
+.report-card .btn:hover,
+.ant-btn:hover {
+  background-color: #218838 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important;
+}
+
+.btn:active,
+.btn-add:active,
+.btn-apply:active,
+.btn-clear:active,
+.export-btn:active,
+.cancel-btn:active,
+.save-btn:active,
+.btn-secondary:active,
+.btn-sm:active,
+.card .btn:active,
+.custom-report-card .btn:active,
+.report-card .btn:active,
+.ant-btn:active {
+  background-color: #1e7e34 !important;
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+}
+
+/* Button Variants */
+.cancel-btn,
+.btn-clear,
+.btn-secondary {
+  background-color: #f1f1f1 !important;
+  color: #333 !important;
+  border: 1px solid #ddd !important;
+}
+
+.cancel-btn:hover,
+.btn-clear:hover,
+.btn-secondary:hover {
+  background-color: #e5e5e5 !important;
+  color: #333 !important;
+}
+
+/* Ant Design Button Overrides */
+.ant-btn-primary {
+  background-color: #28a745 !important;
+  border-color: #28a745 !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: #218838 !important;
+  border-color: #218838 !important;
+}
+
+.ant-btn-default {
+  background-color: #f1f1f1 !important;
+  color: #333 !important;
+  border-color: #ddd !important;
+}
+
+.ant-btn-default:hover {
+  background-color: #e5e5e5 !important;
+  color: #333 !important;
+  border-color: #ccc !important;
+}
+
+/* Responsive Sidebar */
+@media (max-width: 768px) {
+  .af-sidebar {
+    width: 280px;
+    position: fixed;
+    top: 70px;
+    z-index: 1000;
+    height: calc(100vh - 70px);
+  }
+  
+  .main-content {
+    margin-left: 0; /* Remove sidebar margin on mobile */
+  }
+  
+  main {
+    margin-left: 0; /* Remove sidebar margin on mobile */
+  }
+}
+
+/* Sidebar Animation */
+.af-sidebar .nav-link {
+  position: relative;
+  overflow: hidden;
+}
+
+.af-sidebar .nav-link::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.af-sidebar .nav-link:hover::after {
+  left: 100%;
+}
+
+/* Enhanced Footer Styles */
+footer {
+  width: 100vw !important;
+  left: 0;
+  right: 0;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
+  position: relative;
+  margin-bottom: 0 !important;
+}
+
+/* Force header and footer to break out of container constraints */
+header, footer {
+  position: relative !important;
+  width: 100vw !important;
+  left: 50% !important;
+  right: 50% !important;
+  margin-left: -50vw !important;
+  margin-right: -50vw !important;
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Ensure no spacing after footer */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+}
+
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure footer is at the very bottom with no spacing */
+footer {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+}
+
+/* Remove any potential spacing from the root element */
+#root {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Ensure footer content is properly centered */
+footer .container-fluid {
+  width: 100%;
+  max-width: none;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  margin: 0;
+}
+
+/* All Departments Component Styles */
+.departments-table .table-row-selected {
+  background-color: #e3f2fd !important;
+  border-left: 3px solid #2196f3 !important;
+}
+
+.departments-table .table-row-selected td {
+  background-color: transparent !important;
+}
+
+.departments-table tbody tr:hover {
+  background-color: #f5f5f5;
+  cursor: pointer;
+}
+
+.departments-table tbody tr:hover td {
+  background-color: transparent;
+}
+
+/* Fixed bottom action bar spacing */
+body {
+  padding-bottom: 80px;
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+  background: none;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: ">";
+  color: #6c757d;
+}
+
+/* Card styling for departments */
+.ant-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Form styling */
+.form-control:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.form-select:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Status badge styling */
+.ant-badge-status-success {
+  background-color: #28a745;
+}
+
+.ant-badge-status-warning {
+  background-color: #ffc107;
+}
+
+.ant-badge-status-processing {
+  background-color: #17a2b8;
+}

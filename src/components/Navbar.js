@@ -33,8 +33,8 @@ const Navbar = ({ children }) => {
           <Link to="/service-log" className="nav-link">Service Log</Link>
           <Link to="/schedule" className="nav-link">Schedule</Link>
           <Link to="/history" className="nav-link">History</Link>
-          <Link to="/user" className="nav-link">User</Link>
-          <Link to="/roles" className="nav-link">Roles</Link>
+          {/* <Link to="/user" className="nav-link">User</Link> */}
+          {/* <Link to="/roles" className="nav-link">Roles</Link> */}
           <button onClick={handleLogout} className="btn btn-danger mt-3">
             Logout
           </button>

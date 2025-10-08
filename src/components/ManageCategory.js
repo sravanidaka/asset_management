@@ -1,126 +1,469 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FaEdit, FaTrash, FaArrowLeft } from "react-icons/fa";
-import { Drawer, Form, Input, InputNumber, Select, Button, Space, Table, message } from "antd";
+import { Drawer, Form, Input, InputNumber, Select, Button, Space, Table, message, Modal } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "../App.css";
 
 export default function ManageCategory({ onNavigate }) {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [form] = Form.useForm();
-  const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
   });
   const [dataSource, setDataSource] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filteredInfo, setFilteredInfo] = useState({});
+  const [sortedInfo, setSortedInfo] = useState({});
 
   // 🔹 Fetch categories from API
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/asset-categories");
-      if (!response.ok) {
-        throw new Error("Failed to fetch categories");
+      console.log('Fetching categories from API...');
+      const response = await fetch(`http://202.53.92.35:5004/api/settings/getSettingCategoriesList?t=${Date.now()}&cache=${Math.random()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      console.log('API Response status:', response.status);
+      
+      const result = await response.json();
+    
+      // Handle different response structures
+      let data = [];
+      if (Array.isArray(result)) {
+        data = result;
+        console.log("Using direct array from API");
+      } else if (result.data && Array.isArray(result.data)) {
+        data = result.data;
+      } else if (result.categories && Array.isArray(result.categories)) {
+        data = result.categories;
+      } else if (result.result && Array.isArray(result.result)) {
+        data = result.result;
+      } else if (result.items && Array.isArray(result.items)) {
+        data = result.items;
+      } else {
+        console.error("Unexpected API response structure:", result);
+        data = [];
       }
-      const data = await response.json();
+    
       // Add key property for each item (required by Ant Design Table)
       const dataWithKeys = data.map((item, index) => ({
         ...item,
         key: item.id || item._id || index.toString(),
       }));
+      
       setDataSource(dataWithKeys);
-      message.success("Categories loaded successfully");
+      message.success(`Categories loaded successfully (${dataWithKeys.length} items)`);
     } catch (error) {
       console.error("Error fetching categories:", error);
-      message.error("Failed to load categories");
+      message.error(`Failed to load categories: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
+
 
   // 🔹 Fetch data on component mount
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  // 🔹 Filter data based on search
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((value) =>
-      value.toString().toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
+  // 🔹 Handle table change for filters and sorting
+  const handleTableChange = (pagination, filters, sorter) => {
+    setPagination(pagination);
+    setFilteredInfo(filters);
+    setSortedInfo(sorter);
+  };
 
-  // 🔹 Table columns with sorting
-  const columns = [
-    {
-      title: "Category Name",
-      dataIndex: "category_name",
-      key: "category_name",
-      sorter: (a, b) => a.category_name.localeCompare(b.category_name),
-    },
-    {
-      title: "Parent Category",
-      dataIndex: "parent_category",
-      key: "parent_category",
-      sorter: (a, b) => a.parent_category.localeCompare(b.parent_category),
-    },
-    {
-      title: "Type (CapEx/OpEx)",
-      dataIndex: "capex_opex",
-      key: "capex_opex",
-      sorter: (a, b) => a.capex_opex.localeCompare(b.capex_opex),
-    },
-    {
+  // 🔹 Dynamic table columns based on available data
+  const getDynamicColumns = () => {
+    if (dataSource.length === 0) return [];
+    
+    // Define only the fields that should be shown
+    const allPossibleFields = [
+      'category_name', 'parent_category', 'useful_life', 'capex_opex'
+    ];
+    
+    // Get fields that have actual data (not N/A, null, undefined, empty)
+    const getFieldsWithData = () => {
+      const fieldsWithData = new Set();
+      
+      // First, add all possible fields that exist in the data
+      allPossibleFields.forEach(field => {
+        if (dataSource.some(item => item[field] !== undefined && item[field] !== null)) {
+          fieldsWithData.add(field);
+        }
+      });
+      
+      // Then add any other fields that have data
+      dataSource.forEach(item => {
+        Object.keys(item).forEach(key => {
+          if (key !== 'key' && 
+              item[key] !== 'N/A' && 
+              item[key] !== null && 
+              item[key] !== undefined && 
+              item[key] !== '' &&
+              item[key] !== 'null' &&
+              item[key] !== 'undefined') {
+            fieldsWithData.add(key);
+          }
+        });
+      });
+      
+      return Array.from(fieldsWithData);
+    };
+    
+    const availableFields = getFieldsWithData();
+    
+    // Define field mappings with display names, render functions, and filters
+    const fieldMappings = {
+      category_name: { 
+        title: "Name", 
+        sorter: (a, b) => (a.category_name || "").localeCompare(b.category_name || ""),
+        render: (text) => text && text !== 'N/A' ? text : '-',
+        onFilter: (value, record) => record.category_name?.toString().toLowerCase().includes(value.toLowerCase()),
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search name"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Search
+              </Button>
+              <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filteredValue: filteredInfo.category_name || null,
+      },
+      parent_category: { 
+        title: "Parent Category", 
+        sorter: (a, b) => (a.parent_category || "").localeCompare(b.parent_category || ""),
+        render: (text) => text && text !== 'N/A' ? text : '-',
+        onFilter: (value, record) => record.parent_category?.toString().toLowerCase().includes(value.toLowerCase()),
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search parent category"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Search
+              </Button>
+              <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filteredValue: filteredInfo.parent_category || null,
+      },
+      useful_life: { 
+        title: "Useful Life (years)", 
+        sorter: (a, b) => (a.useful_life || 0) - (b.useful_life || 0),
+        render: (text) => text && text !== 'N/A' ? `${text} years` : '-',
+        onFilter: (value, record) => record.useful_life?.toString().toLowerCase().includes(value.toLowerCase()),
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search useful life"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Search
+              </Button>
+              <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filteredValue: filteredInfo.useful_life || null,
+      },
+      capex_opex: { 
+        title: "Type", 
+        sorter: (a, b) => (a.capex_opex || "").localeCompare(b.capex_opex || ""),
+        render: (text) => text && text !== 'N/A' ? text : '-',
+        onFilter: (value, record) => record.capex_opex?.toString().toLowerCase().includes(value.toLowerCase()),
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search type"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Search
+              </Button>
+              <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filteredValue: filteredInfo.capex_opex || null,
+      }
+    };
+    
+    // Create columns for all possible fields first, then add any additional fields
+    const columns = [];
+    
+    // Add all standard fields
+    allPossibleFields.forEach(field => {
+      if (fieldMappings[field]) {
+        columns.push({
+          title: fieldMappings[field].title,
+          dataIndex: field,
+          key: field,
+          sorter: fieldMappings[field].sorter,
+          render: fieldMappings[field].render,
+          onFilter: fieldMappings[field].onFilter,
+          filterDropdown: fieldMappings[field].filterDropdown,
+          filteredValue: fieldMappings[field].filteredValue,
+          ellipsis: true,
+        });
+      }
+    });
+    
+    // Add any additional fields that aren't in the standard list
+    availableFields
+      .filter(field => !allPossibleFields.includes(field) && fieldMappings[field])
+      .forEach(field => {
+        columns.push({
+          title: fieldMappings[field].title,
+          dataIndex: field,
+          key: field,
+          sorter: fieldMappings[field].sorter,
+          render: fieldMappings[field].render,
+          onFilter: fieldMappings[field].onFilter,
+          filterDropdown: fieldMappings[field].filterDropdown,
+          filteredValue: fieldMappings[field].filteredValue,
+          ellipsis: true,
+        });
+      });
+    
+    // Add Actions column
+    columns.push({
       title: "Actions",
       key: "actions",
+      width: 100,
       render: (_, record) => (
         <Space>
-          <Button type="default" size="small" icon={<FaEdit />} />
-          <Button type="primary" danger size="small" icon={<FaTrash />} />
+          <Button type="default" size="small" icon={<FaEdit />} onClick={() => handleEdit(record)} />
+          <Button type="primary" danger size="small" icon={<FaTrash />} onClick={() => handleDelete(record)} />
         </Space>
       ),
-    },
-  ];
+    });
+    
+    return columns;
+  };
 
-  // 🔹 Handle pagination change
-  const handleTableChange = (pagination) => {
-    setPagination(pagination);
+  const columns = getDynamicColumns();
+
+  // 🔹 Track editing index and record
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
+
+  // 🔹 Open drawer for create
+  const handleCreate = () => {
+    form.resetFields();
+    setEditingIndex(null);
+    setEditingRecord(null);
+    setDrawerVisible(true);
+  };
+
+  // 🔹 Open drawer for edit
+  const handleEdit = (record) => {
+    console.log("Edit record:", record); // Debug log
+    
+    // Helper function to clean values (remove N/A, null, undefined)
+    const cleanValue = (value) => {
+      if (value === 'N/A' || value === null || value === undefined || value === '') {
+        return undefined; // Return undefined so form field shows as empty
+      }
+      return value;
+    };
+    
+    // Set form values with cleaned data
+    form.setFieldsValue({
+      category_name: cleanValue(record.category_name),
+      parent_category: cleanValue(record.parent_category),
+      useful_life: cleanValue(record.useful_life),
+      description: cleanValue(record.description),
+      default_depreciation: cleanValue(record.default_depreciation),
+      capex_opex: cleanValue(record.capex_opex),
+      track_warranty: cleanValue(record.track_warranty),
+    });
+    
+    setEditingIndex(record.id || record._id);
+    setEditingRecord(record); // Store the original record for updates
+    setDrawerVisible(true);
+  };
+
+  // 🔹 Handle delete
+  const handleDelete = (record) => {
+    console.log("Delete record:", record);
+    console.log("Record ID:", record.id || record.key);
+    
+    Modal.confirm({
+      title: "Confirm Delete",
+      content: "Are you sure you want to delete this category?",
+      okText: "Yes",
+      cancelText: "No",
+      onOk: async () => {
+        try {
+          const deleteId = record.id || record.key;
+          console.log("Attempting to delete with ID:", deleteId);
+          
+          // Call API directly
+          const response = await fetch("http://202.53.92.35:5004/api/settings/deleteSettingCategory", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id: deleteId }),
+          });
+          
+          console.log("Delete response status:", response.status);
+          console.log("Delete response ok:", response.ok);
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log("Delete response data:", result);
+            message.success("Category deleted successfully!");
+            await fetchCategories(); // Refresh from API
+          } else {
+            const errorText = await response.text();
+            console.error("Delete failed with status:", response.status);
+            console.error("Delete error response:", errorText);
+            throw new Error(`Failed to delete category: ${response.status}`);
+          }
+        } catch (error) {
+          console.error("Error deleting category:", error);
+          message.error(`Failed to delete category: ${error.message}`);
+        }
+      },
+    });
   };
 
   // 🔹 Save Category
   const handleSave = async (values) => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/asset-categories", {
-        method: "POST",
+      const isEditing = editingIndex !== null;
+      
+      // Client-side validation for required fields
+      const requiredFields = ['category_name', 'parent_category', 'useful_life', 'description', 'default_depreciation', 'capex_opex', 'track_warranty'];
+      const missingFields = requiredFields.filter(field => !values[field]);
+      
+      if (missingFields.length > 0) {
+        message.error(`❌ Invalid data: ${missingFields.join(', ')} are required`);
+        return;
+      }
+
+      // Call API directly
+      const mainUrl = isEditing 
+        ? "http://202.53.92.35:5004/api/settings/updateSettingCategory"
+        : "http://202.53.92.35:5004/api/settings/createSettingCategory";
+      
+      const method = isEditing ? "PUT" : "POST";
+      
+      // Prepare API data with proper ID for updates
+      const apiData = isEditing 
+        ? { id: editingRecord?.id || editingIndex, ...values }
+        : values;
+
+      const response = await fetch(mainUrl, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(apiData),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create category");
+        const errorText = await response.text();
+        console.error("API Error Response:", errorText);
+        console.error("Response Status:", response.status);
+        console.error("Response Headers:", Object.fromEntries(response.headers.entries()));
+        
+        // Try to parse error response
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (parseError) {
+          errorData = { message: errorText };
+        }
+        
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} category: ${errorData.message || errorText}`);
       }
 
-      const newCategory = await response.json();
-      message.success("Category created successfully!");
+      const result = await response.json();
+      message.success(`Category ${isEditing ? 'updated' : 'created'} successfully!`);
       
-      // Refresh the table data
+      // Refresh the table data immediately
       await fetchCategories();
       
       form.resetFields();
       setDrawerVisible(false);
+      setEditingIndex(null);
+      setEditingRecord(null);
     } catch (error) {
-      console.error("Error creating category:", error);
-      message.error("Failed to create category");
+      console.error(`Error ${editingIndex !== null ? 'updating' : 'creating'} category:`, error);
+      message.error(`Failed to ${editingIndex !== null ? 'update' : 'create'} category: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="container-fluid p-1 position-relative" style={{ minHeight: "100vh" }}>
       {/* 🔹 Header Row */}
@@ -136,10 +479,15 @@ export default function ManageCategory({ onNavigate }) {
         </div>
         <div className="d-flex gap-2">
           <button className="btn btn-success px-4">All Types</button>
-          <button className="btn btn-success px-4">All Departments</button>
+          <button 
+            className="btn btn-success px-4"
+            onClick={() => onNavigate("all-departments")}
+          >
+            All Departments
+          </button>
           <button
             className="btn btn-success px-4"
-            onClick={() => setDrawerVisible(true)}
+            onClick={handleCreate}
           >
             <PlusOutlined /> Create Category
           </button>
@@ -151,18 +499,10 @@ export default function ManageCategory({ onNavigate }) {
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fs-4 mb-0">Categories</h5>
-            <Input
-              placeholder="Search categories..."
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 300 }}
-              allowClear
-            />
           </div>
           <Table
             columns={columns}
-            dataSource={filteredData}
+            dataSource={dataSource}
             loading={loading}
             pagination={{
               current: pagination.current,
@@ -180,7 +520,7 @@ export default function ManageCategory({ onNavigate }) {
 
       {/* 🔹 Drawer Form */}
       <Drawer
-        title="Create Category"
+        title={editingIndex !== null ? "Edit Category" : "Add Category"}
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
@@ -254,7 +594,7 @@ export default function ManageCategory({ onNavigate }) {
             <Space className="d-flex justify-content-end w-100">
               <Button onClick={() => form.resetFields()} disabled={loading}>Reset</Button>
               <Button className="btn btn-success" htmlType="submit" loading={loading}>
-                Save Category
+                {editingIndex !== null ? 'Update Category' : 'Add Category'}
               </Button>
             </Space>
           </Form.Item>

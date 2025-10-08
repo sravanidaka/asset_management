@@ -10,8 +10,21 @@ import {
   LinearScale,
   BarElement,
   Title,
+  PointElement,
+  LineElement,
+  Filler,
+  RadialLinearScale,
 } from "chart.js";
-import { Pie, Bar, Doughnut } from "react-chartjs-2";
+import { 
+  Pie, 
+  Bar, 
+  Doughnut, 
+  Line, 
+  PolarArea, 
+  Radar,
+  Scatter,
+  Bubble
+} from "react-chartjs-2";
 
 // Register Chart.js components
 ChartJS.register(
@@ -21,7 +34,11 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  Title
+  Title,
+  PointElement,
+  LineElement,
+  Filler,
+  RadialLinearScale
 );
 
 const Row = ({ children }) => (
@@ -33,7 +50,15 @@ const Card = ({ title, children, icon, color }) => (
     <div className="card-body">
       <div className="d-flex align-items-center mb-3">
         <div
-          className={`icon-box bg-${color} text-white rounded-circle p-2 me-3`}
+          className={`icon-box bg-${color} text-white rounded-circle me-3`}
+          style={{
+            width: '40px',
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '50%'
+          }}
         >
           <i className={`bi bi-${icon}`}></i>
         </div>
@@ -45,7 +70,7 @@ const Card = ({ title, children, icon, color }) => (
 );
 
 export default function Dashboard() {
-  // Data for Total Assets chart
+  // 1. PIE CHART - Total Assets
   const totalAssetsData = {
     labels: ["IT Assets", "Non-IT Assets"],
     datasets: [
@@ -58,7 +83,7 @@ export default function Dashboard() {
     ],
   };
 
-  // Data for Asset Status chart
+  // 2. DOUGHNUT CHART - Asset Status
   const assetStatusData = {
     labels: ["Active", "In Maintenance", "Disposed"],
     datasets: [
@@ -71,7 +96,7 @@ export default function Dashboard() {
     ],
   };
 
-  // Data for Upcoming Expiries chart
+  // 3. BAR CHART - Upcoming Expiries
   const expiryData = {
     labels: ["Laptop (AST-105)", "Server (AST-210)", "Printer (AST-301)"],
     datasets: [
@@ -86,76 +111,114 @@ export default function Dashboard() {
     ],
   };
 
-  // Data for Asset Distribution chart
+  // 4. POLAR AREA CHART - Asset Distribution
   const distributionData = {
-    labels: ["Departments", "Locations"],
+    labels: ["IT", "Furniture", "Equipment", "Vehicles", "Machinery"],
     datasets: [
       {
-        data: [5, 3],
-        backgroundColor: ["#36b9cc", "#f6c23e"],
-        hoverBackgroundColor: ["#2c9faf", "#dda20a"],
-        borderWidth: 0,
+        data: [45, 25, 15, 10, 5],
+        backgroundColor: ["#36b9cc", "#f6c23e", "#e74a3b", "#1cc88a", "#858796"],
+        hoverBackgroundColor: ["#2c9faf", "#dda20a", "#c0392b", "#17a673", "#60616f"],
+        borderWidth: 1,
       },
     ],
   };
 
-  // Data for Assigned vs Unassigned chart
+  // 5. LINE CHART - Assigned vs Unassigned (Trend over time)
   const assignmentData = {
-    labels: ["Assigned", "Unassigned"],
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
     datasets: [
       {
-        data: [950, 300],
-        backgroundColor: ["#1cc88a", "#858796"],
-        hoverBackgroundColor: ["#17a673", "#60616f"],
-        borderWidth: 0,
+        label: "Assigned",
+        data: [800, 850, 900, 920, 950, 950],
+        borderColor: "#1cc88a",
+        backgroundColor: "rgba(28, 200, 138, 0.1)",
+        fill: true,
+        tension: 0.4,
+      },
+      {
+        label: "Unassigned",
+        data: [450, 400, 350, 320, 300, 300],
+        borderColor: "#858796",
+        backgroundColor: "rgba(133, 135, 150, 0.1)",
+        fill: true,
+        tension: 0.4,
       },
     ],
   };
 
-  // Data for Maintenance Due chart
+  // 6. RADAR CHART - Maintenance Due
   const maintenanceData = {
-    labels: ["Preventive", "Corrective"],
+    labels: ["Preventive", "Corrective", "Emergency", "Scheduled", "Overdue"],
     datasets: [
       {
-        data: [3, 1],
-        backgroundColor: ["#36b9cc", "#e74a3b"],
-        hoverBackgroundColor: ["#2c9faf", "#c0392b"],
-        borderWidth: 0,
+        label: "Maintenance Tasks",
+        data: [3, 1, 0, 2, 1],
+        backgroundColor: "rgba(54, 185, 204, 0.2)",
+        borderColor: "#36b9cc",
+        borderWidth: 2,
+        pointBackgroundColor: "#36b9cc",
+        pointBorderColor: "#fff",
+        pointHoverBackgroundColor: "#fff",
+        pointHoverBorderColor: "#36b9cc",
       },
     ],
   };
 
-  // Data for Disposal Summary chart
+  // 7. SCATTER CHART - Disposal Summary
   const disposalData = {
-    labels: ["IT Assets", "Non-IT Assets"],
     datasets: [
       {
-        label: "Assets Disposed",
-        data: [65, 35],
+        label: "IT Assets",
+        data: [
+          { x: 1000, y: 65 },
+          { x: 2000, y: 70 },
+          { x: 3000, y: 75 },
+        ],
         backgroundColor: "#e74a3b",
         borderColor: "#e74a3b",
-        borderWidth: 1,
-        borderRadius: 5,
+      },
+      {
+        label: "Non-IT Assets",
+        data: [
+          { x: 1000, y: 35 },
+          { x: 2000, y: 30 },
+          { x: 3000, y: 25 },
+        ],
+        backgroundColor: "#f6c23e",
+        borderColor: "#f6c23e",
       },
     ],
   };
 
-  // Data for Asset Cost Summary chart
+  // 8. BUBBLE CHART - Asset Cost Summary
   const costData = {
-    labels: ["IT Assets", "Non-IT Assets", "Maintenance", "Disposal"],
     datasets: [
       {
-        label: "Cost in $",
-        data: [960000, 540000, 25000, 50000],
-        backgroundColor: ["#4e73df", "#1cc88a", "#f6c23e", "#e74a3b"],
-        borderColor: ["#4e73df", "#1cc88a", "#f6c23e", "#e74a3b"],
-        borderWidth: 1,
-        borderRadius: 5,
+        label: "IT Assets",
+        data: [
+          { x: 1, y: 960000, r: 20 },
+          { x: 2, y: 540000, r: 15 },
+          { x: 3, y: 25000, r: 5 },
+          { x: 4, y: 50000, r: 8 },
+        ],
+        backgroundColor: "rgba(78, 115, 223, 0.6)",
+        borderColor: "#4e73df",
       },
     ],
   };
 
-  // Options for bar charts
+  // Options for different chart types
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "bottom",
+      },
+    },
+  };
+
   const barOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -171,8 +234,22 @@ export default function Dashboard() {
     },
   };
 
-  // Options for pie/doughnut charts
-  const pieOptions = {
+  const lineOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+      },
+    },
+  };
+
+  const polarOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -182,12 +259,77 @@ export default function Dashboard() {
     },
   };
 
+  const radarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+    },
+    scales: {
+      r: {
+        beginAtZero: true,
+      },
+    },
+  };
+
+  const scatterOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Asset Value ($)",
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Disposal Count",
+        },
+        beginAtZero: true,
+      },
+    },
+  };
+
+  const bubbleOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Asset Category",
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Cost ($)",
+        },
+        beginAtZero: true,
+      },
+    },
+  };
+
   return (
     <div className="container-fluid p-1 dashboard-container">
       {/* Top bar */}
       <div className="container-fluid p-1">
         <h2 className="mb-1">Dashboard</h2>
-        <p className="mt-0">Overview of all asset-related KPIs</p>
+        <p className="mt-0">Overview of all asset-related KPIs with diverse chart types</p>
       </div>
 
       {/* Row 1 */}
@@ -228,13 +370,13 @@ export default function Dashboard() {
               <div className="small text-muted">Distribution Points</div>
             </div>
             <div style={{ height: "200px" }}>
-              <Pie data={distributionData} options={pieOptions} />
+              <PolarArea data={distributionData} options={polarOptions} />
             </div>
           </Card>
         </div>
         <div className="col-md-4">
           <Card
-            title="Assigned vs Unassigned"
+            title="Assignment Trends"
             icon="person-check"
             color="primary"
           >
@@ -243,18 +385,18 @@ export default function Dashboard() {
               <div className="small text-muted">Total Assets</div>
             </div>
             <div style={{ height: "200px" }}>
-              <Doughnut data={assignmentData} options={pieOptions} />
+              <Line data={assignmentData} options={lineOptions} />
             </div>
           </Card>
         </div>
         <div className="col-md-4">
-          <Card title="Maintenance Due" icon="tools" color="danger">
+          <Card title="Maintenance Analysis" icon="tools" color="danger">
             <div className="text-center mb-2">
               <div className="h3 af-metric text-success">4</div>
               <div className="small text-muted">Assets due for maintenance</div>
             </div>
             <div style={{ height: "200px" }}>
-              <Pie data={maintenanceData} options={pieOptions} />
+              <Radar data={maintenanceData} options={radarOptions} />
             </div>
           </Card>
         </div>
@@ -263,13 +405,13 @@ export default function Dashboard() {
       {/* Row 3 */}
       <Row>
         <div className="col-md-4">
-          <Card title="Disposal Summary" icon="trash" color="danger">
+          <Card title="Disposal Analysis" icon="trash" color="danger">
             <div className="text-center mb-2">
               <div className="h3 af-metric text-success">100</div>
               <div className="small text-muted">Total Disposed</div>
             </div>
             <div style={{ height: "200px" }}>
-              <Bar data={disposalData} options={barOptions} />
+              <Scatter data={disposalData} options={scatterOptions} />
             </div>
             <div className="text-center mt-2">
               <div className="h5">$50,000</div>
@@ -278,13 +420,13 @@ export default function Dashboard() {
           </Card>
         </div>
         <div className="col-md-4">
-          <Card title="Asset Cost Summary" icon="cash-coin" color="success">
+          <Card title="Cost Analysis" icon="cash-coin" color="success">
             <div className="text-center mb-2">
               <div className="h3 af-metric text-success">$1,500,000</div>
               <div className="small text-muted">Total Asset Value</div>
             </div>
             <div style={{ height: "200px" }}>
-              <Bar data={costData} options={barOptions} />
+              <Bubble data={costData} options={bubbleOptions} />
             </div>
           </Card>
         </div>

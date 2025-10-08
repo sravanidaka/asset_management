@@ -1,164 +1,312 @@
 import React, { useState } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import '../App.css';
+import {
+  Button,
+  Col,
+  Form,
+  Input,
+  Row,
+  Select,
+  message,
+  InputNumber,
+} from 'antd';
+import axios from 'axios';
+import { formatDateForDB, parseDateFromDB } from '../utils/dateUtils';
+
+const { Option } = Select;
 
 const Schedule = () => {
-  const [asset, setAsset] = useState('');
-  const [maintenanceType, setMaintenanceType] = useState('');
-  const [description, setDescription] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [location, setLocation] = useState('');
-  const [estimatedCost, setEstimatedCost] = useState('');
-  const [vendor, setVendor] = useState('');
-  const [notification, setNotification] = useState('');
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
+
+  // Submit form
+  const onFinish = async (values) => {
+    console.log("Schedule form submitted with values:", values);
+    message.loading("Saving schedule...", 0);
+    
+    try {
+      setLoading(true);
+      
+      if (editingSchedule) {
+        // Update existing schedule
+        console.log("Updating schedule:", editingSchedule);
+        const updateData = {
+          id: editingSchedule.id,
+          asset_id: values.asset_id,
+          maintenance_type: values.maintenance_type,
+          description: values.description,
+          scheduled_date: values.scheduled_date,
+          due_date: values.due_date,
+          priority: values.priority,
+          assigned_to: values.assigned_to,
+          location: values.location,
+          estimated_cost: values.estimated_cost,
+          vendor: values.vendor,
+          notification: values.notification,
+          attachment: values.attachment
+        };
+        
+        console.log("Update data being sent:", updateData);
+        console.log("Update data types:", Object.keys(updateData).map(key => `${key}: ${typeof updateData[key]}`));
+        
+        const response = await axios.put("http://202.53.92.35:5004/api/maintenance/schedule", updateData);
+        
+        console.log("Update response:", response.data);
+        
+        if (response.data?.success === false) {
+          throw new Error(response.data.message || "Update failed");
+        }
+        
+        message.destroy(); // Clear loading message
+        message.success("✅ Schedule updated successfully!");
+      } else {
+        // Create new schedule
+        console.log("Creating new schedule");
+        const createData = {
+          asset_id: values.asset_id,
+          maintenance_type: values.maintenance_type,
+          description: values.description,
+          scheduled_date: values.scheduled_date,
+          due_date: values.due_date,
+          priority: values.priority,
+          assigned_to: values.assigned_to,
+          location: values.location,
+          estimated_cost: values.estimated_cost,
+          vendor: values.vendor,
+          notification: values.notification,
+          attachment: values.attachment
+        };
+        
+        console.log("Create data being sent:", createData);
+        console.log("Create data types:", Object.keys(createData).map(key => `${key}: ${typeof createData[key]}`));
+        
+        const response = await axios.post("http://202.53.92.35:5004/api/maintenance/schedule", createData);
+        
+        console.log("Create response:", response.data);
+        
+        if (response.data?.success === false) {
+          throw new Error(response.data.message || "Creation failed");
+        }
+        
+        message.destroy(); // Clear loading message
+        message.success("✅ Schedule created successfully!");
+      }
+      
+      form.resetFields();
+      setEditingSchedule(null);
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      message.destroy(); // Clear loading message
+      
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        message.error("❌ API server is not running. Please check the backend server on 202.53.92.35:5004");
+      } else if (error.response?.data?.message) {
+        message.error(`❌ Failed to save schedule: ${error.response.data.message}`);
+      } else if (error.code === 'NETWORK_ERROR' || !navigator.onLine) {
+        message.error("❌ Network error. Please check your internet connection.");
+      } else {
+        message.error("❌ Failed to save schedule. Please check your connection and try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onReset = () => {
+    form.resetFields();
+    setEditingSchedule(null);
+  };
 
   return (
-    <div className="container p-1">
-      <h2 className="mb-1 ">Schedule</h2>
+    <div className="container-fluid p-1">
+      <h2 className="mb-1">Schedule</h2>
       <p className="mt-0">Plan and manage asset schedules.</p>
-      <div className="card ">
+      
+      <div className="card">
         <div className="card-body">
           <h5 className="fs-4 mb-3">Maintenance Details</h5>
-          <h5 className="mb-3">Asset Information</h5>
-
-          {/* Asset Info */}
           
-           <div className="col-md-12">
-              <label className="form-label">Asset ID</label>
-              <select className="form-select">
-                <option>Select ID</option>
-                <option>AST-001</option>
-                <option>AST-002</option>
-                <option>AST-003</option>
-              </select>
-            </div>
-          {/* Maintenance Details */}
-          <h3 className="mt-3">Maintenance Details</h3>
-          <div className="col-md-12 mt-2">
-              <label className="form-label">Maintenance Type</label>
-              <select
-                className="form-select"
-                value={maintenanceType}
-                onChange={(e) => setMaintenanceType(e.target.value)}
+          <Form
+            layout="vertical"
+            form={form}
+            onFinish={onFinish}
+          >
+            {/* Asset Information */}
+            <h5 className="mb-2">Asset Information</h5>
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="asset_id"
+                  label="Asset ID"
+                  rules={[{ required: true, message: "Please select asset ID" }]}
+                >
+                  <Select placeholder="Select asset ID">
+                    <Option value="AST-001">AST-001</Option>
+                    <Option value="AST-002">AST-002</Option>
+                    <Option value="AST-003">AST-003</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Maintenance Details */}
+            <h5 className="mb-2">Maintenance Details</h5>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="maintenance_type"
+                  label="Maintenance Type"
+                  rules={[{ required: true, message: "Please select maintenance type" }]}
+                >
+                  <Select placeholder="Select maintenance type">
+                    <Option value="Preventive">Preventive</Option>
+                    <Option value="Corrective">Corrective</Option>
+                    <Option value="Calibration">Calibration</Option>
+                    <Option value="AMC">AMC</Option>
+                    <Option value="Repair">Repair</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="priority"
+                  label="Priority"
+                  rules={[{ required: true, message: "Please select priority" }]}
+                >
+                  <Select placeholder="Select priority">
+                    <Option value="High">High</Option>
+                    <Option value="Medium">Medium</Option>
+                    <Option value="Low">Low</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="description"
+                  label="Description"
+                  rules={[{ required: true, message: "Please enter description" }]}
+                >
+                  <Input.TextArea 
+                    rows={3} 
+                    placeholder="Enter maintenance description"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="scheduled_date"
+                  label="Scheduled Date"
+                  rules={[{ required: true, message: "Please select scheduled date" }]}
+                >
+                  <Input type="date" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="due_date"
+                  label="Due Date"
+                  rules={[{ required: true, message: "Please select due date" }]}
+                >
+                  <Input type="date" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="assigned_to"
+                  label="Assigned To"
+                  rules={[{ required: true, message: "Please enter assigned to" }]}
+                >
+                  <Input placeholder="Enter assigned to" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="location"
+                  label="Location"
+                  rules={[{ required: true, message: "Please enter location" }]}
+                >
+                  <Input placeholder="Enter location" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="estimated_cost"
+                  label="Estimated Cost"
+                  rules={[{ required: true, message: "Please enter estimated cost" }]}
+                >
+                  <InputNumber 
+                    placeholder="Enter estimated cost (e.g., 7500.00)" 
+                    style={{ width: '100%' }}
+                    min={0}
+                    step={0.01}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="vendor"
+                  label="Vendor"
+                  rules={[{ required: true, message: "Please enter vendor" }]}
+                >
+                  <Input placeholder="Enter vendor name" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="notification"
+                  label="Notification"
+                  rules={[{ required: true, message: "Please select notification" }]}
+                >
+                  <Select placeholder="Select notification method">
+                    <Option value="Email">Email</Option>
+                    <Option value="SMS">SMS</Option>
+                    <Option value="Email + In-app">Email + In-app</Option>
+                    <Option value="SMS + Email">SMS + Email</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="attachment"
+                  label="Attachment"
+                >
+                  <Input placeholder="Enter attachment filename (e.g., mnt_sched_001.pdf)" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Buttons */}
+            <div className="d-flex justify-content-end gap-2">
+              <Button onClick={onReset} disabled={loading}>
+                Cancel
+              </Button>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                loading={loading}
+                className="btn-add"
               >
-                <option value="">Select Type</option>
-                <option value="1">Preventive</option>
-                <option value="2">Corrective</option>
-                <option value="3">Calibration</option>
-                <option value="4">AMC</option>
-              </select>
+                {editingSchedule ? "Update Schedule" : "Create Schedule"}
+              </Button>
             </div>
-          <div className="form-label mt-2">
-            <label className="form-label">Description</label>
-            <textarea 
-              className="form-control" 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)} 
-              placeholder="Enter maintenance description"
-            ></textarea>
-          </div>
-
-          {/* Scheduling & Assignment */}
-          <h5 className="mt-3">Scheduling & Assignment</h5>
-          <div className="row mt-2">
-            <div className="col-md-4 mt-2">
-              <label className="form-label">Scheduled Date</label>
-              <input 
-                type="date" 
-                className="form-control" 
-                value={scheduledDate} 
-                onChange={(e) => setScheduledDate(e.target.value)} 
-              />
-            </div>
-            <div className="col-md-4 mt-2">
-              <label className="form-label">Due Date</label>
-              <input 
-                type="date" 
-                className="form-control" 
-                value={dueDate} 
-                onChange={(e) => setDueDate(e.target.value)} 
-              />
-            </div>
-             <div className="col-md-4 mt-2">
-              <label className="form-label">Priority</label>
-              <select className="form-select">
-                <option>Select</option>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
-              </select>
-            </div>
-            <div className="col-md-4 mt-2">
-              <label className="form-label">Assigned To</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                value={assignedTo} 
-                onChange={(e) => setAssignedTo(e.target.value)} 
-                placeholder="e.g., Mechanic Team" 
-              />
-            </div>
-          </div>
-
-          {/* Additional Settings */}
-          <h3 className="mt-2">Additional Settings</h3>
-          <div className="row mb-3">
-            <div className="col-md-4 mt-2">
-              <label className="form-label">Location</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                value={location} 
-                onChange={(e) => setLocation(e.target.value)} 
-                placeholder="Enter location" 
-              />
-            </div>
-            <div className="col-md-4 mt-2">
-              <label className="form-label">Estimated Cost</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                value={estimatedCost} 
-                onChange={(e) => setEstimatedCost(e.target.value)} 
-                placeholder="e.g., 250" 
-              />
-            </div>
-            <div className="col-md-4 mt-2">
-              <label className="form-label">Vendor</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                value={vendor} 
-                onChange={(e) => setVendor(e.target.value)} 
-                placeholder="Select vendor" 
-              />
-            </div>
-            <div className="col-md-4 mt-2">
-              <label className="form-label">Notification</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                value={notification} 
-                onChange={(e) => setNotification(e.target.value)} 
-                placeholder="Email + In-app" 
-              />
-            </div>
-          </div>
-
-          {/* Attachments */}
-          <h3 className="mb-3">Attachments</h3>
-          <div className="form-group mt-2">
-            <label className="form-label">Upload</label>
-            <input type="file" className="form-control" />
-            {/* <small className="form-text text-muted">Drop files or browse</small> */}
-          </div>
-
-          {/* Buttons */}
-          <div className="d-flex justify-content-end">
-            <button className="btn me-2">Cancel</button>
-            <button className="btn ">Save Maintenance</button>
-          </div>
+          </Form>
         </div>
       </div>
     </div>

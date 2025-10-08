@@ -2,40 +2,73 @@ import React, { useState,useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FaEdit, FaTrash, FaArrowLeft } from "react-icons/fa";
 
-import { Drawer, Form, Input, InputNumber, Select, Button, Space, Table, message } from "antd";
+import { Drawer, Form, Input, InputNumber, Select, Button, Space, Table, message, Modal } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "../App.css";
 
 export default function ManageStatus({ onNavigate }) {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [form] = Form.useForm();
-  const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
   });
   const [dataSource, setDataSource] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filteredInfo, setFilteredInfo] = useState({});
+  const [sortedInfo, setSortedInfo] = useState({});
 
-  // 🔹 Fetch categories from API
-  const fetchCategories = async () => {
+  // 🔹 Fetch statuses from API
+  const fetchStatuses = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/asset-categories");
+      console.log('Fetching statuses from API...');
+      const response = await fetch("http://202.53.92.35:5004/api/settings/getSettingStatusList", {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('API Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error("Failed to fetch categories");
+        throw new Error(`Failed to fetch statuses: ${response.status} ${response.statusText}`);
       }
-      const data = await response.json();
+      
+      const result = await response.json();
+      console.log("API Response:", result); // Debug log
+      
+      // Handle different response structures
+      let data = [];
+      if (Array.isArray(result)) {
+        data = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        data = result.data;
+      } else if (result.statuses && Array.isArray(result.statuses)) {
+        data = result.statuses;
+      } else if (result.result && Array.isArray(result.result)) {
+        data = result.result;
+      } else if (result.items && Array.isArray(result.items)) {
+        data = result.items;
+      } else {
+        console.log("Unexpected API response structure:", result);
+        console.log("Available keys:", Object.keys(result));
+        data = [];
+      }
+      
+      console.log("Processed data:", data); // Debug log
+      
       // Add key property for each item (required by Ant Design Table)
       const dataWithKeys = data.map((item, index) => ({
         ...item,
         key: item.id || item._id || index.toString(),
       }));
       setDataSource(dataWithKeys);
-      message.success("Categories loaded successfully");
+      message.success(`Statuses loaded successfully (${dataWithKeys.length} items)`);
     } catch (error) {
-      console.error("Error fetching categories:", error);
-      message.error("Failed to load categories");
+      console.error("Error fetching statuses:", error);
+      message.error("Failed to load statuses");
     } finally {
       setLoading(false);
     }
@@ -43,126 +76,383 @@ export default function ManageStatus({ onNavigate }) {
 
   // 🔹 Fetch data on component mount
   useEffect(() => {
-    fetchCategories();
+    fetchStatuses();
   }, []);
 
-  // 🔹 Filter data based on search
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((value) =>
-      value.toString().toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
-
-  // 🔹 Table columns with sorting
-  const columns = [
-    {
-      title: "Category Name",
-      dataIndex: "category_name",
-      key: "category_name",
-      sorter: (a, b) => a.category_name.localeCompare(b.category_name),
-    },
-    {
-      title: "Parent Category",
-      dataIndex: "parent_category",
-      key: "parent_category",
-      sorter: (a, b) => a.parent_category.localeCompare(b.parent_category),
-    },
-    {
-      title: "Type (CapEx/OpEx)",
-      dataIndex: "capex_opex",
-      key: "capex_opex",
-      sorter: (a, b) => a.capex_opex.localeCompare(b.capex_opex),
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      render: (_, record) => (
-        <Space>
-          <Button type="default" size="small" icon={<FaEdit />} />
-          <Button type="primary" danger size="small" icon={<FaTrash />} />
-        </Space>
-      ),
-    },
-  ];
-
-
-  const handleTableChange = (pagination) => {
+  // 🔹 Handle table change for filters and sorting
+  const handleTableChange = (pagination, filters, sorter) => {
     setPagination(pagination);
+    setFilteredInfo(filters);
+    setSortedInfo(sorter);
   };
 
-  // 🔹 Save Category
+  // 🔹 Dynamic table columns based on available data
+  const getDynamicColumns = () => {
+    if (dataSource.length === 0) return [];
+    
+    // Define only the fields that should be shown
+    const allPossibleFields = [
+      'status_name', 'status_type', 'is_default'
+    ];
+    
+    // Get fields that have actual data (not N/A, null, undefined, empty)
+    const getFieldsWithData = () => {
+      const fieldsWithData = new Set();
+      
+      // First, add all possible fields that exist in the data
+      allPossibleFields.forEach(field => {
+        if (dataSource.some(item => item[field] !== undefined && item[field] !== null)) {
+          fieldsWithData.add(field);
+        }
+      });
+      
+      // Then add any other fields that have data
+      dataSource.forEach(item => {
+        Object.keys(item).forEach(key => {
+          if (key !== 'key' && 
+              item[key] !== 'N/A' && 
+              item[key] !== null && 
+              item[key] !== undefined && 
+              item[key] !== '' &&
+              item[key] !== 'null' &&
+              item[key] !== 'undefined') {
+            fieldsWithData.add(key);
+          }
+        });
+      });
+      
+      return Array.from(fieldsWithData);
+    };
+    
+    const availableFields = getFieldsWithData();
+    
+    // Define field mappings with display names, render functions, and filters
+    const fieldMappings = {
+      status_name: { 
+        title: "Status Name", 
+        sorter: (a, b) => (a.status_name || "").localeCompare(b.status_name || ""),
+        render: (text) => text && text !== 'N/A' ? text : '-',
+        onFilter: (value, record) => record.status_name?.toString().toLowerCase().includes(value.toLowerCase()),
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search status name"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Search
+              </Button>
+              <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filteredValue: filteredInfo.status_name || null,
+      },
+      status_type: { 
+        title: "Status Type", 
+        sorter: (a, b) => (a.status_type || "").localeCompare(b.status_type || ""),
+        render: (text) => text && text !== 'N/A' ? text : '-',
+        onFilter: (value, record) => record.status_type?.toString().toLowerCase().includes(value.toLowerCase()),
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search status type"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Search
+              </Button>
+              <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filteredValue: filteredInfo.status_type || null,
+      },
+      is_default: { 
+        title: "Is Default", 
+        sorter: (a, b) => (a.is_default || "").localeCompare(b.is_default || ""),
+        render: (text) => text === 1 || text === '1' || text === true ? 'Yes' : 'No',
+        onFilter: (value, record) => {
+          const displayValue = record.is_default === 1 || record.is_default === '1' || record.is_default === true ? 'Yes' : 'No';
+          return displayValue.toLowerCase().includes(value.toLowerCase());
+        },
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search default status"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Search
+              </Button>
+              <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filteredValue: filteredInfo.is_default || null,
+      }
+    };
+    
+    // Create columns for all possible fields first, then add any additional fields
+    const columns = [];
+    
+    // Add all standard fields
+    allPossibleFields.forEach(field => {
+      if (fieldMappings[field]) {
+        columns.push({
+          title: fieldMappings[field].title,
+          dataIndex: field,
+          key: field,
+          sorter: fieldMappings[field].sorter,
+          render: fieldMappings[field].render,
+          onFilter: fieldMappings[field].onFilter,
+          filterDropdown: fieldMappings[field].filterDropdown,
+          filteredValue: fieldMappings[field].filteredValue,
+          ellipsis: true,
+        });
+      }
+    });
+    
+    // Add any additional fields that aren't in the standard list
+    availableFields
+      .filter(field => !allPossibleFields.includes(field) && fieldMappings[field])
+      .forEach(field => {
+        columns.push({
+          title: fieldMappings[field].title,
+          dataIndex: field,
+          key: field,
+          sorter: fieldMappings[field].sorter,
+          render: fieldMappings[field].render,
+          onFilter: fieldMappings[field].onFilter,
+          filterDropdown: fieldMappings[field].filterDropdown,
+          filteredValue: fieldMappings[field].filteredValue,
+          ellipsis: true,
+        });
+      });
+    
+    // Add Actions column
+    columns.push({
+      title: "Actions",
+      key: "actions",
+      width: 100,
+      render: (_, record) => (
+        <Space>
+          <Button type="default" size="small" icon={<FaEdit />} onClick={() => handleEdit(record)} />
+          <Button type="primary" danger size="small" icon={<FaTrash />} onClick={() => handleDelete(record)} />
+        </Space>
+      ),
+    });
+    
+    return columns;
+  };
+
+  const columns = getDynamicColumns();
+
+  // 🔹 Track editing index and record
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
+
+  // 🔹 Open drawer for create
+  const handleCreate = () => {
+    form.resetFields();
+    setEditingIndex(null);
+    setEditingRecord(null);
+    setDrawerVisible(true);
+  };
+
+  // 🔹 Open drawer for edit
+  const handleEdit = (record) => {
+    console.log("Edit record:", record); // Debug log
+    
+    // Helper function to clean values (remove N/A, null, undefined)
+    const cleanValue = (value) => {
+      if (value === 'N/A' || value === null || value === undefined || value === '') {
+        return undefined; // Return undefined so form field shows as empty
+      }
+      return value;
+    };
+    
+    // Set form values with cleaned data
+    form.setFieldsValue({
+      status_name: cleanValue(record.status_name),
+      status_type: cleanValue(record.status_type),
+      color_tag: cleanValue(record.color_tag),
+      description: cleanValue(record.description),
+      is_default: cleanValue(record.is_default),
+      affects_availability: cleanValue(record.affects_availability),
+      include_in_utilization: cleanValue(record.include_in_utilization),
+    });
+    
+    setEditingIndex(record.id || record._id);
+    setEditingRecord(record); // Store the original record for updates
+    setDrawerVisible(true);
+  };
+
+  // 🔹 Handle delete
+  const handleDelete = (record) => {
+    console.log("Delete record:", record);
+    console.log("Record ID:", record.id || record.key);
+    
+    Modal.confirm({
+      title: "Confirm Delete",
+      content: "Are you sure you want to delete this status?",
+      okText: "Yes",
+      cancelText: "No",
+      onOk: async () => {
+        try {
+          const deleteId = record.id || record.key;
+          console.log("Attempting to delete with ID:", deleteId);
+          
+          // Call API directly
+          const response = await fetch("http://202.53.92.35:5004/api/settings/deleteSettingStatus", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id: deleteId }),
+          });
+          
+          console.log("Delete response status:", response.status);
+          console.log("Delete response ok:", response.ok);
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log("Delete response data:", result);
+            message.success("Status deleted successfully!");
+            await fetchStatuses();
+          } else {
+            const errorText = await response.text();
+            console.error("Delete failed with status:", response.status);
+            console.error("Delete error response:", errorText);
+            throw new Error(`Failed to delete status: ${response.status}`);
+          }
+        } catch (error) {
+          console.error("Error deleting status:", error);
+          message.error(`Failed to delete status: ${error.message}`);
+        }
+      },
+    });
+  };
+
+  // 🔹 Save Status
   const handleSave = async (values) => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/asset-categories", {
-        method: "POST",
+      const isEditing = editingIndex !== null;
+      
+      // Client-side validation for required fields
+      const requiredFields = ['status_name', 'status_type', 'color_tag', 'description'];
+      const missingFields = requiredFields.filter(field => !values[field]);
+      
+      // Check for numeric fields that might be 0 (which is falsy but valid)
+      if (values.is_default === undefined || values.is_default === null || values.is_default === '') {
+        missingFields.push('is_default');
+      }
+      if (values.affects_availability === undefined || values.affects_availability === null || values.affects_availability === '') {
+        missingFields.push('affects_availability');
+      }
+      if (values.include_in_utilization === undefined || values.include_in_utilization === null || values.include_in_utilization === '') {
+        missingFields.push('include_in_utilization');
+      }
+      
+      if (missingFields.length > 0) {
+        message.error(`❌ Invalid data: ${missingFields.join(', ')} are required`);
+        return;
+      }
+
+      // Call API directly
+      const mainUrl = isEditing 
+        ? "http://202.53.92.35:5004/api/settings/updateSettingStatus"
+        : "http://202.53.92.35:5004/api/settings/createSettingStatus";
+      
+      const method = isEditing ? "PUT" : "POST";
+      
+      // Prepare API data with proper ID for updates
+      const apiData = isEditing 
+        ? { id: editingRecord?.id || editingIndex, ...values }
+        : values;
+
+      const response = await fetch(mainUrl, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(apiData),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create category");
+        const errorText = await response.text();
+        console.error("API Error Response:", errorText);
+        console.error("Response Status:", response.status);
+        console.error("Response Headers:", Object.fromEntries(response.headers.entries()));
+        
+        // Try to parse error response
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (parseError) {
+          errorData = { message: errorText };
+        }
+        
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} status: ${errorData.message || errorText}`);
       }
 
-      const newCategory = await response.json();
-      message.success("Category created successfully!");
+      const result = await response.json();
+      message.success(`Status ${isEditing ? 'updated' : 'created'} successfully!`);
       
-      // Refresh the table data
-      await fetchCategories();
+      // Refresh the table data immediately
+      await fetchStatuses();
       
       form.resetFields();
       setDrawerVisible(false);
+      setEditingIndex(null);
+      setEditingRecord(null);
     } catch (error) {
-      console.error("Error creating category:", error);
-      message.error("Failed to create category");
+      console.error(`Error ${editingIndex !== null ? 'updating' : 'creating'} status:`, error);
+      message.error(`Failed to ${editingIndex !== null ? 'update' : 'create'} status: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 Drawer state
+  
 
-  // 🔹 Drawer state
-  const [open, setOpen] = useState(false);
-
-  // 🔹 Form state
-  const [formData, setFormData] = useState({
-    status_name: "",
-    status_type: "",
-    color_tag: "",
-    description: "",
-    is_default: "",
-    affects_availability: "",
-    include_in_utilization: "", 
-  });
-
-  // 🔹 Handle input changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // 🔹 Handle form submit
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Status Form Data:", formData);
-    setOpen(false); // close drawer after save
-  };
-
-  // 🔹 Reset form
-  const handleReset = () => {
-    setFormData({
-      status_name: "",
-      status_type: "",
-      color_tag: "",
-      description: "",
-      is_default: "",
-      affects_availability: "",
-      include_in_utilization: "",
-    });
-  };
 
   return (
     <div className="container-fluid p-1">
@@ -182,30 +472,22 @@ export default function ManageStatus({ onNavigate }) {
           <button className="btn btn-success px-4">Lifecycle</button>
           <button
             className="btn btn-success px-4"
-            onClick={() => setOpen(true)}
+            onClick={handleCreate}
           >
-            + Create Status
+            <PlusOutlined /> Create Status
           </button>
         </div>
       </div>
 
       {/* 🔹 Statuses Table */}
       <div className="card custom-shadow">
-      <div className="card-body">
+        <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fs-4 mb-0">Categories</h5>
-            <Input
-              placeholder="Search categories..."
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 300 }}
-              allowClear
-            />
+            <h5 className="fs-4 mb-0">Statuses</h5>
           </div>
           <Table
             columns={columns}
-            dataSource={filteredData}
+            dataSource={dataSource}
             loading={loading}
             pagination={{
               current: pagination.current,
@@ -223,137 +505,88 @@ export default function ManageStatus({ onNavigate }) {
 
       {/* 🔹 Drawer with Create/Edit Form */}
       <Drawer
-        title="Create / Edit Status"
+        title={editingIndex !== null ? "Edit Status" : "Add Status"}
         placement="right"
-        onClose={() => setOpen(false)}
-        open={open}
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
         width={600}
       >
-        <form onSubmit={handleSubmit}>
-          {/* Row 1 */}
-          <div className="row mb-3">
-            <div className="col-md-4">
-              <label className="form-label">
-                Status Name <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+        <Form layout="vertical" form={form} onFinish={handleSave}>
+          <Form.Item
+            label="Status Name"
                 name="status_name"
-                className="form-control"
-                placeholder="e.g., In Use"
-                value={formData.status_name}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label">
-                Status Type <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+            rules={[{ required: true, message: "Please enter status name" }]}
+          >
+            <Input placeholder="e.g., Available" />
+          </Form.Item>
+
+          <Form.Item
+            label="Status Type"
                 name="status_type"
-                className="form-control"
-                placeholder="Lifecycle"
-                value={formData.status_type}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label">
-                Color Tag <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+            rules={[{ required: true, message: "Please enter status type" }]}
+          >
+            <Input placeholder="e.g., Operational" />
+          </Form.Item>
+
+          <Form.Item
+            label="Color Tag"
                 name="color_tag"
-                className="form-control"
-                placeholder="Accent"
-                value={formData.color_tag}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
+            rules={[{ required: true, message: "Please enter color tag" }]}
+          >
+            <Input placeholder="e.g., #28a745" />
+          </Form.Item>
 
-          {/* Row 2 */}
-          <div className="row mb-3">
-            <div className="col-md-12">
-              <label className="form-label">
-                Description <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+          <Form.Item
+            label="Description"
                 name="description"
-                className="form-control"
-                placeholder="Short description..."
-                value={formData.description}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
+            rules={[{ required: true, message: "Please enter description" }]}
+          >
+            <Input.TextArea rows={3} placeholder="Short description..." />
+          </Form.Item>
 
-          {/* Row 3 */}
-          <div className="row mb-3">
-            <div className="col-md-4">
-              <label className="form-label">
-                Is Default? <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+          <Form.Item
+            label="Is Default"
                 name="is_default"
-                className="form-control"
-                placeholder="No"
-                value={formData.is_default}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label">
-                Affects Availability <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+            rules={[{ required: true, message: "Please select default status" }]}
+          >
+            <Select placeholder="Select option">
+              <Select.Option value={1}>Yes</Select.Option>
+              <Select.Option value={0}>No</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Affects Availability"
                 name="affects_availability"
-                className="form-control"
-                placeholder="Yes"
-                value={formData.affects_availability}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label">
-                Include in Utilization <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+            rules={[{ required: true, message: "Please select option" }]}
+          >
+            <Select placeholder="Select option">
+              <Select.Option value={1}>Yes</Select.Option>
+              <Select.Option value={0}>No</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Include in Utilization"
                 name="include_in_utilization"
-                className="form-control"
-                placeholder="Yes"
-                value={formData.include_in_utilization}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
+            rules={[{ required: true, message: "Please select option" }]}
+          >
+            <Select placeholder="Select option">
+              <Select.Option value={1}>Yes</Select.Option>
+              <Select.Option value={0}>No</Select.Option>
+            </Select>
+          </Form.Item>
 
           {/* Buttons */}
-          <div className="d-flex justify-content-end gap-2">
-            <button
-              type="button"
-              className="btn btn-light px-4"
-              onClick={handleReset}
-            >
-              Reset
-            </button>
-            <button type="submit" className="btn btn-success px-4">
-              Save Status
-            </button>
-          </div>
-        </form>
+          <Form.Item>
+            <Space className="d-flex justify-content-end w-100">
+              <Button onClick={() => form.resetFields()} disabled={loading}>Reset</Button>
+              <Button className="btn btn-success" htmlType="submit" loading={loading}>
+                {editingIndex !== null ? 'Update Status' : 'Add Status'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </Drawer>
     </div>
   );
