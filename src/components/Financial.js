@@ -13,6 +13,8 @@ import {
 } from "antd";
 import axios from "axios";
 import { formatDateForDB, parseDateFromDB } from "../utils/dateUtils";
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 
 const { Option } = Select;
 
@@ -113,6 +115,12 @@ const Financial = () => {
 
   return (
     <div className="container-fluid p-1">
+      {/* Top Navigation Bar - Breadcrumb Only */}
+      <div className="d-flex justify-content-end align-items-center mb-3">
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
+      
       <h2 className="mb-1">Asset Depreciation & Financials</h2>
       <p className="mt-0">Calculate and record depreciation.</p>
 

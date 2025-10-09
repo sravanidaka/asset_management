@@ -5,6 +5,8 @@ import { Table, Input, Button, Space, Drawer, Form, Select, DatePicker, message,
 import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import { parseDateForDatePicker, formatDateForAPI } from '../utils/dateUtils';
 import '../App.css';
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 
 const Requests = () => {
   const [dataSource, setDataSource] = useState([]);
@@ -471,8 +473,11 @@ const Requests = () => {
 
   return (
     <div className="container-fluid p-1 position-relative" style={{ minHeight: "100vh" }}>
-     
-      
+      {/* Top Navigation Bar - Breadcrumb Only */}
+      <div className="d-flex justify-content-end align-items-center mb-3">
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
 
       {/* Title and Description */}
       <div className="d-flex justify-content-between align-items-start mb-2">

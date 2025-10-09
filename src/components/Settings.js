@@ -8,6 +8,8 @@ import {
   FaCog,
   FaSitemap,
 } from "react-icons/fa";
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 
 function Settings({ onNavigate }) {
   const cards = [
@@ -64,6 +66,15 @@ function Settings({ onNavigate }) {
 
   return (
     <div className="container-fluid p-1">
+      {/* Top Navigation Bar */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        {/* Back Navigation */}
+        <BackNavigation />
+        
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
+      
       <h2 className="mb-1">Settings</h2>
       <h4>Master Data Setup</h4>
       <p className="mt-0">Configure master values used across the system.</p>

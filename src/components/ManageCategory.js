@@ -4,6 +4,8 @@ import { FaEdit, FaTrash, FaArrowLeft } from "react-icons/fa";
 import { Drawer, Form, Input, InputNumber, Select, Button, Space, Table, message, Modal } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "../App.css";
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 
 export default function ManageCategory({ onNavigate }) {
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -466,15 +468,19 @@ export default function ManageCategory({ onNavigate }) {
   };
   return (
     <div className="container-fluid p-1 position-relative" style={{ minHeight: "100vh" }}>
+      {/* Top Navigation Bar */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        {/* Back Navigation */}
+        <BackNavigation />
+        
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
+      
       {/* 🔹 Header Row */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div className="d-flex align-items-center gap-2">
-          <button
-            className="btn btn-success px-4"
-            onClick={() => onNavigate("settings")}
-          >
-            <FaArrowLeft /> Back
-          </button>
+         
           <h2 className="mb-1">Asset Categories</h2>
         </div>
         <div className="d-flex gap-2">

@@ -1295,20 +1295,341 @@ header, footer {
   left: 0;
   align-self: flex-start;
   z-index: 1000; /* Higher z-index to overlay header */
-  width: 280px;
+  width: 3px;
   height: 100vh; /* Full viewport height */
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal scrolling */
   display: flex;
   flex-direction: column;
-  /* Hide scrollbar for webkit browsers */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  /* Show scrollbar when needed */
+  scrollbar-width: thin; /* Firefox */
+  -ms-overflow-style: auto; /* Internet Explorer 10+ */
 }
 
-/* Hide scrollbar for webkit browsers */
+/* Show scrollbar when needed */
 .af-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.af-sidebar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.af-sidebar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.af-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Ensure sidebar content stays in proper position */
+.af-sidebar .nav-section {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+.af-sidebar .nav-section .af-section-title {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+.af-sidebar .nav-dropdown {
+  position: relative;
+  width: calc(100% - 30px);
+  display: block;
+  overflow: visible;
+}
+
+/* Ensure modules stay visible and use full scroll height */
+.af-sidebar {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+.af-sidebar .nav-section {
+  position: relative;
+  width: 100%;
+  display: block;
+  min-height: auto;
+}
+
+.af-sidebar .nav-section .af-section-title {
+  position: relative;
+  width: 100%;
+  display: block;
+  z-index: 1;
+}
+
+.af-sidebar .nav-dropdown.show {
+  display: block;
+  position: relative;
+  width: calc(100% - 30px);
+  max-height: none;
+  overflow: visible;
+}
+
+/* Force full height for navigation */
+.af-sidebar .af-nav {
+  height: calc(100vh - 100px) !important;
+  min-height: calc(100vh - 100px) !important;
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding-bottom: 2rem !important;
+}
+
+/* Ensure all modules are visible */
+.af-sidebar .nav-section {
+  margin-bottom: 0.5rem;
+}
+
+.af-sidebar .nav-section:last-child {
+  margin-bottom: 2rem; /* Extra space for last section */
+}
+
+/* Collapsed sidebar styles */
+.af-sidebar.collapsed {
+  width: 80px !important;
+  transition: width 0.3s ease;
+}
+
+.af-sidebar.collapsed .sidebar-header {
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.af-sidebar.collapsed .nav-link {
+  padding: 10px !important;
+  margin: 2px 0 !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+}
+
+.af-sidebar.collapsed .nav-link span {
   display: none;
+}
+
+.af-sidebar.collapsed .af-section-title {
+  display: none;
+}
+
+.af-sidebar.collapsed .nav-dropdown {
+  display: block !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.af-sidebar.collapsed .nav-section {
+  margin-bottom: 0.5rem;
+}
+
+.af-sidebar.collapsed .nav-dropdown .d-flex {
+  margin-bottom: 0.25rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.af-sidebar.collapsed .nav-dropdown .d-flex:hover {
+  background-color: #f8f9fa;
+}
+
+/* Ensure all navigation items are visible when collapsed */
+.af-sidebar.collapsed .nav-dropdown {
+  margin-left: 0;
+  padding-left: 0;
+  margin-top: 0;
+  width: 100%;
+}
+
+.af-sidebar.collapsed .nav-dropdown .d-flex {
+  justify-content: center;
+  padding: 10px;
+  margin: 2px 0;
+  border-radius: 8px;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.af-sidebar.collapsed .nav-dropdown .d-flex:hover {
+  background-color: #e8f5e8;
+  transform: scale(1.05);
+}
+
+.af-sidebar.collapsed .nav-dropdown .d-flex.active {
+  background-color: #28a745;
+  color: white;
+}
+
+.af-sidebar.collapsed .nav-dropdown .d-flex.active:hover {
+  background-color: #218838;
+}
+
+/* Main content adjustment for collapsed sidebar */
+.main-content {
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 80px !important;
+}
+
+/* Breadcrumb positioning - integrated with page */
+.breadcrumb-container {
+  position: relative;
+  z-index: 1;
+}
+
+.breadcrumb-container .ant-breadcrumb {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.breadcrumb-container .ant-breadcrumb a {
+  color: #6c757d;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-container .ant-breadcrumb a:hover {
+  color: #28a745;
+  text-decoration: none;
+}
+
+.breadcrumb-container .ant-breadcrumb .ant-breadcrumb-link {
+  color: #495057;
+  font-weight: 500;
+}
+
+/* Back Navigation Icon - blends with page */
+.back-navigation-icon {
+  position: relative;
+  z-index: 1;
+}
+
+.back-navigation-icon:hover {
+  background-color: rgba(40, 167, 69, 0.1) !important;
+  color: #28a745 !important;
+  transform: scale(1.1) !important;
+}
+
+/* Header Styles */
+.header-main {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  z-index: 999;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  min-height: 60px;
+  background-color: #ffffff;
+}
+
+.header-container {
+  padding-left: 300px;
+  padding-right: 0;
+}
+
+.header-container.sidebar-collapsed {
+  padding-left: 80px;
+}
+
+.hamburger-button {
+  width: 30px;
+  height: 30px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+}
+
+.hamburger-line {
+  width: 20px;
+  height: 2px;
+  background-color: #495057;
+  border-radius: 1px;
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  background-color: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border: 2px solid #e9ecef;
+}
+
+.notification-icon:hover {
+  background-color: #f8f9fa;
+  border-color: #28a745;
+  transform: scale(1.05);
+}
+
+.user-profile-container {
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid #e9ecef;
+  min-width: 120px;
+}
+
+.user-profile-container:hover {
+  background-color: #e9ecef;
+  transform: scale(1.02);
+  border-color: #28a745;
+}
+
+.user-name {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.user-role {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.bell-icon {
+  color: #495057;
+}
+
+.avatar-icon {
+  color: #495057;
+}
+
+.chevron-icon {
+  color: #6c757d;
+}
+
+/* Header adjustment for collapsed sidebar */
+header .container-fluid {
+  transition: padding-left 0.3s ease;
+}
+
+header .container-fluid.sidebar-collapsed {
+  padding-left: 100px !important;
 }
 
 .sidebar-header {
@@ -1333,7 +1654,10 @@ header, footer {
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal scrolling */
-  max-height: calc(100vh - 120px); /* Account for sticky header */
+  height: calc(100vh - 100px); /* Use full available height minus header */
+  min-height: calc(100vh - 100px); /* Ensure minimum height */
+  position: relative; /* Ensure proper positioning */
+  padding-bottom: 2rem; /* Add bottom padding to ensure last items are visible */
 }
 
 .af-nav .nav-link {
@@ -1784,6 +2108,9 @@ header, footer {
   margin-left: 15px;
   padding-left: 15px;
   margin-top: 5px;
+  position: relative; /* Ensure proper positioning */
+  width: calc(100% - 30px); /* Account for margins */
+  max-width: 100%; /* Prevent overflow */
 }
 
 .nav-dropdown .nav-link {
@@ -1829,6 +2156,8 @@ header, footer {
 
 .nav-section {
   margin-bottom: 8px;
+  position: relative; /* Ensure proper positioning */
+  width: 100%; /* Full width */
 }
 
 /* Main navigation links (like Dashboard) */
@@ -2116,3 +2445,4 @@ body {
     font-size: 0.8rem !important;
   }
 }
+

@@ -3,6 +3,8 @@ import { FaEye, FaEdit, FaTrash, FaArrowLeft } from "react-icons/fa";
 import { Table, Input, Button, Space, Drawer, Form, Select, DatePicker, message, Popconfirm } from 'antd';
 import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import { formatDateForAPI, parseDateForDatePicker, formatDateForDisplay } from '../utils/dateUtils';
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 
 const History = () => {
   const [dataSource, setDataSource] = useState([]);
@@ -430,7 +432,11 @@ const History = () => {
 
   return (
     <div className="container-fluid p-1 position-relative" style={{ minHeight: "100vh" }}>
-      
+      {/* Top Navigation Bar - Breadcrumb Only */}
+      <div className="d-flex justify-content-end align-items-center mb-3">
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
 
       {/* Title and Description */}
       <div className="d-flex justify-content-between align-items-start mb-2">

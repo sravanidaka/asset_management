@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../App.css";
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 import {
   Button,
   Col,
@@ -120,6 +122,12 @@ const Allocate = () => {
 
   return (
     <div className="container-fluid p-1">
+      {/* Top Navigation Bar - Breadcrumb Only */}
+      <div className="d-flex justify-content-end align-items-center mb-3">
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
+      
       <h2 className="mb-1">Asset Allocation</h2>
       <p className="mt-0">Assign assets to users or locations.</p>
 

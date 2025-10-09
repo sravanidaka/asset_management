@@ -1,6 +1,8 @@
 import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../App.css";
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -326,6 +328,12 @@ export default function Dashboard() {
 
   return (
     <div className="container-fluid p-1 dashboard-container">
+      {/* Top Navigation Bar - Breadcrumb Only */}
+      <div className="d-flex justify-content-end align-items-center mb-3">
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
+      
       {/* Top bar */}
       <div className="container-fluid p-1">
         <h2 className="mb-1">Dashboard</h2>

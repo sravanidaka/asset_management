@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaPlus, FaShoppingCart, FaHandHolding, FaTruck, FaDollarSign, FaTrash, FaClipboardCheck, FaWrench, FaCalendarAlt, FaHistory, FaChartLine, FaCashRegister, FaShieldAlt, FaFileAlt, FaCog, FaUser, FaSignOutAlt, FaBuilding, FaCubes, FaChevronDown, FaChevronRight, FaBoxes, FaStore, FaTools, FaChartBar } from 'react-icons/fa';
+import {
+  FaHome, FaShoppingCart, FaHandHolding, FaTruck, FaDollarSign,
+  FaTrash, FaClipboardCheck, FaWrench, FaCalendarAlt, FaHistory,
+  FaChartLine, FaCashRegister, FaShieldAlt, FaFileAlt, FaCog,
+  FaBuilding, FaBoxes, FaStore, FaTools, FaChartBar,
+  FaChevronDown, FaChevronRight, FaUsers, FaUserShield
+} from 'react-icons/fa';
 
-function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true }) {
+function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true, collapsed = false }) {
   const location = useLocation();
   const [expandedSections, setExpandedSections] = useState({
     'Assets': true,
     'Vendors': true,
     'Maintenance': true,
-    'Reports & Settings': true
+    'Reports & Settings': true,
+    'User Management': true
   });
 
-  const navigationItems = [
-    {
-      section: null,
-      items: [
-        { key: 'dashboard', label: 'Dashboard', icon: FaHome }
-      ]
-    },
+  const navigationSections = [
     {
       section: 'Assets',
       sectionIcon: FaBoxes,
@@ -33,9 +34,7 @@ function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true }) 
     {
       section: 'Vendors',
       sectionIcon: FaStore,
-      items: [
-        { key: 'ManageVendor', label: 'Manage Vendor', icon: FaBuilding },
-      ]
+      items: [{ key: 'ManageVendor', label: 'Manage Vendor', icon: FaBuilding }]
     },
     {
       section: 'Maintenance',
@@ -56,8 +55,14 @@ function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true }) 
         { key: 'compliance', label: 'Compliance', icon: FaShieldAlt },
         { key: 'disposalreport', label: 'Disposal Report', icon: FaFileAlt },
         { key: 'settings', label: 'Settings', icon: FaCog },
-        //{ key: 'user', label: 'User', icon: FaUser },
-        // { key: 'roles', label: 'Roles', icon: FaUser }
+      ]
+    },
+    {
+      section: 'User Management',
+      sectionIcon: FaUsers,
+      items: [
+        { key: 'user', label: 'User', icon: FaUsers },
+        { key: 'roles', label: 'Roles', icon: FaUserShield },
       ]
     }
   ];
@@ -70,115 +75,133 @@ function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true }) 
   };
 
   return (
-    <aside className={`col-12 col-md-2 col-2 af-sidebar p-3 ${isOpen ? 'open' : ''}`}>
+    <aside
+      className={`af-sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
+      style={{
+        height: '100vh',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#fff',
+        borderRight: '1px solid #ddd',
+        transition: 'width 0.3s ease',
+        width: collapsed ? '80px' : '260px',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 1000
+      }}
+    >
       {/* Header */}
-      <div className="sidebar-header sticky-top">
-        <div className="d-flex align-items-center">
-          <img 
-            src="/greenlantern-logo.png" 
-            alt="Asset Management Logo" 
-            className="af-brand-logo"
-            style={{ width: '200px', height: '60px', objectFit: 'contain' }}
+      <div className="sidebar-header text-center py-3" style={{ flexShrink: 0, borderBottom: '1px solid #eee' }}>
+        {collapsed ? (
+          <img
+            src="/greenlantern-logo.png"
+            alt="Logo"
+            style={{ width: '40px', height: '40px', objectFit: 'contain' }}
           />
-        </div>
+        ) : (
+          <img
+            src="/greenlantern-logo.png"
+            alt="Logo"
+            style={{ width: '180px', height: '50px', objectFit: 'contain' }}
+          />
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="nav flex-column af-nav">
-        {navigationItems.map((section, sectionIndex) => (
-          <div key={sectionIndex} className="nav-section">
-            {section.section && (
-              <div 
-                className="af-section-title d-flex align-items-center justify-content-between"
+      <nav
+        className="flex-column mt-3"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '0 10px 20px 10px',
+        }}
+      >
+        {/* Dashboard always visible */}
+        <Link
+          to="/dashboard"
+          onClick={() => handleNavClick('dashboard')}
+          className={`d-flex align-items-center ${collapsed ? 'justify-content-center' : 'gap-2'} px-3 py-2 text-decoration-none`}
+          style={{
+            background: location.pathname === '/dashboard' || location.pathname === '/' ? '#e0f3e7' : 'transparent',
+            color: location.pathname === '/dashboard' || location.pathname === '/' ? '#1a7f49' : '#555',
+            borderRadius: '6px',
+            fontWeight: 600,
+            fontSize: '15px',
+            transition: 'all 0.2s ease',
+            marginBottom: '10px'
+          }}
+          title={collapsed ? 'Dashboard' : undefined}
+        >
+          <FaHome size={collapsed ? 22 : 16} />
+          {!collapsed && <span>Dashboard</span>}
+        </Link>
+
+        {/* Collapsible Sections */}
+        {navigationSections.map((section, index) => (
+          <div key={index} className="nav-section mb-2">
+            {section.section && !collapsed && (
+              <div
+                className="af-section-title d-flex align-items-center justify-content-between px-2 py-2"
                 onClick={() => toggleSection(section.section)}
-                style={{ cursor: 'pointer', userSelect: 'none' }}
-              >
-                <div className="d-flex align-items-center gap-2">
-                  {section.sectionIcon && <section.sectionIcon size={16} />}
-                  <span>{section.section}</span>
-                </div>
-                {expandedSections[section.section] ? (
-                  <FaChevronDown size={12} />
-                ) : (
-                  <FaChevronRight size={12} />
-                )}
-              </div>
-            )}
-            {section.section ? (
-              <div 
-                className={`nav-dropdown ${expandedSections[section.section] ? 'show' : 'hide'}`}
                 style={{
-                  maxHeight: expandedSections[section.section] ? '500px' : '0',
-                  overflow: 'hidden',
-                  transition: 'max-height 0.3s ease-in-out'
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: '#444',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px'
                 }}
               >
-                {section.items.map((item) => {
-                  const IconComponent = item.icon;
-                  const isActive = location.pathname === `/${item.key}` || (item.key === 'dashboard' && location.pathname === '/');
-                  return (
-                    <Link
-                      key={item.key}
-                      to={`/${item.key}`}
-                      className={`nav-link d-flex align-items-center gap-2 ${isActive ? 'active' : ''}`}
-                      onClick={() => handleNavClick(item.key)}
-                    >
-                      <IconComponent />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
+                <div className="d-flex align-items-center gap-2">
+                  {section.sectionIcon && <section.sectionIcon size={14} />}
+                  <span>{section.section}</span>
+                </div>
+                {expandedSections[section.section] ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
               </div>
-            ) : (
-              section.items.map((item) => {
-                const IconComponent = item.icon;
-                const isActive = location.pathname === `/${item.key}` || (item.key === 'dashboard' && location.pathname === '/');
+            )}
+
+            <div
+              className={`nav-dropdown ${expandedSections[section.section] ? 'show' : 'hide'}`}
+              style={{
+                maxHeight: expandedSections[section.section] ? '400px' : '0',
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease',
+                ...(collapsed && {
+                  maxHeight: 'none',
+                  overflow: 'visible',
+                  display: 'block'
+                })
+              }}
+            >
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === `/${item.key}`;
                 return (
                   <Link
                     key={item.key}
                     to={`/${item.key}`}
-                    className={`nav-link d-flex align-items-center gap-2 ${isActive ? 'active' : ''}`}
                     onClick={() => handleNavClick(item.key)}
+                    className={`d-flex align-items-center ${collapsed ? 'justify-content-center' : 'gap-2'} px-3 py-2 text-decoration-none`}
+                    style={{
+                      background: isActive ? '#e0f3e7' : 'transparent',
+                      color: isActive ? '#1a7f49' : '#555',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      marginTop: '4px',
+                      transition: 'all 0.2s ease',
+                    }}
+                    title={collapsed ? item.label : undefined}
                   >
-                    <IconComponent />
-                    <span>{item.label}</span>
+                    <Icon size={collapsed ? 20 : 16} />
+                    {!collapsed && <span>{item.label}</span>}
                   </Link>
                 );
-              })
-            )}
+              })}
+            </div>
           </div>
         ))}
-
-        {/* Logout */}
-        {/*<div className="mt-auto">
-          <button
-            className="nav-link d-flex align-items-center gap-2 w-100"
-            onClick={handleLogout}
-            style={{
-              color: '#dc3545',
-              border: 'none',
-              background: 'none',
-              padding: '10px 15px',
-              borderRadius: '6px',
-              transition: 'all 0.2s ease',
-              textAlign: 'left',
-              width: '100%'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#f8d7da';
-              e.target.style.color = '#721c24';
-              e.target.style.transform = 'translateX(4px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'transparent';
-              e.target.style.color = '#dc3545';
-              e.target.style.transform = 'translateX(0)';
-            }}
-          >
-            <FaSignOutAlt />
-            <span>Logout</span>
-          </button>
-        </div>*/}
       </nav>
     </aside>
   );

@@ -63,6 +63,7 @@ const Login = ({ setIsAuthenticated }) => {
 
       if (response.ok) {
         showToast('Login Successful', `Welcome back, ${username}`);
+        localStorage.setItem('isAuthenticated', 'true');
         setIsAuthenticated(true);
         navigate('/');
       } else {

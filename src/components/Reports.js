@@ -1,4 +1,6 @@
 import React from 'react';
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 
 const Card = ({ title, description }) => (
   <div className="card  h-100 border-0">
@@ -13,6 +15,12 @@ const Card = ({ title, description }) => (
 const Reports = () => {
   return (
    <div className="container-fluid p-1">
+      {/* Top Navigation Bar - Breadcrumb Only */}
+      <div className="d-flex justify-content-end align-items-center mb-3">
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
+      
       <h2 className="mb-1">Reports</h2> 
       <p className='mt-0'>Overview of all asset-related KPIs</p>
    <div className="card custom-shadow">

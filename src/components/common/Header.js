@@ -1,14 +1,80 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { FaUserCircle, FaSignOutAlt, FaBell, FaCog, FaChevronDown } from "react-icons/fa";
-import { Dropdown, Badge, Avatar } from "antd";
+import { FaUserCircle, FaSignOutAlt, FaBell, FaCog, FaChevronDown, FaBars, FaHome } from "react-icons/fa";
+import { Dropdown, Badge, Avatar, Breadcrumb, Modal } from "antd";
+import { useLocation } from "react-router-dom";
 
-const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar }) => {
+const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar, sidebarCollapsed }) => {
+  const location = useLocation();
   const [notifications] = useState([
     { id: 1, message: "New asset request pending approval", time: "2 min ago" },
     { id: 2, message: "Maintenance scheduled for tomorrow", time: "1 hour ago" },
     { id: 3, message: "System backup completed", time: "3 hours ago" },
   ]);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Handle logout confirmation
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutModal(false);
+    handleLogout();
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false);
+  };
+
+  // Generate breadcrumb items based on current path
+  const generateBreadcrumbItems = () => {
+    const pathSegments = location.pathname.split('/').filter(segment => segment);
+    const breadcrumbItems = [
+      {
+        title: (
+          <span className="d-flex align-items-center gap-1">
+            <FaHome size={12} />
+            <span>Home</span>
+          </span>
+        ),
+        href: '/'
+      }
+    ];
+
+    // Map path segments to readable names
+    const pathNames = {
+      'dashboard': 'Dashboard',
+      'register': 'Register',
+      'procure': 'Procure',
+      'allocate': 'Allocate',
+      'transfer': 'Transfer',
+      'financial': 'Financial',
+      'disposal': 'Disposal',
+      'ManageVendor': 'Manage Vendor',
+      'requests': 'Requests',
+      'service-log': 'Service Log',
+      'schedule': 'Schedule',
+      'history': 'History',
+      'reports': 'Reports',
+      'financials': 'Financials',
+      'compliance': 'Compliance',
+      'disposalreport': 'Disposal Report',
+      'settings': 'Settings',
+      'user': 'User',
+      'roles': 'Roles'
+    };
+
+    pathSegments.forEach((segment, index) => {
+      const isLast = index === pathSegments.length - 1;
+      breadcrumbItems.push({
+        title: pathNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1),
+        href: isLast ? undefined : `/${pathSegments.slice(0, index + 1).join('/')}`
+      });
+    });
+
+    return breadcrumbItems;
+  };
 
   const currentDate = new Date().toLocaleString("en-US", {
     timeZone: "Asia/Kolkata",
@@ -53,7 +119,7 @@ const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar })
           <span>Logout</span>
         </div>
       ),
-      onClick: handleLogout,
+      onClick: handleLogoutClick,
     },
   ];
 
@@ -92,33 +158,23 @@ const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar })
   ];
 
   return (
-    <header className="bg-white border-bottom shadow-sm py-2 px-4 sticky-top" style={{ 
-      width: '100vw', 
-      marginLeft: 'calc(-50vw + 50%)', 
-      marginRight: 'calc(-50vw + 50%)',
-      zIndex: 999, /* Lower z-index than sidebar */
-      position: 'sticky',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: '60px', /* Fixed height for consistency */
-      minHeight: '60px',
-      backgroundColor: '#ffffff'
-    }}>
-      <div className="container-fluid d-flex justify-content-between align-items-center" style={{ paddingLeft: '300px', paddingRight: 0 }}>
-        {/* Mobile Menu Button */}
-        <button 
-          className="mobile-menu-btn d-none" 
-          onClick={onToggleSidebar}
-        >
-          ☰
-        </button>
-        
-        {/* Logo / Title */}
+    <header className="bg-white border-bottom shadow-sm py-2 px-4 sticky-top header-main">
+      <div className={`container-fluid d-flex justify-content-between align-items-center header-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+        {/* Left Side - Hamburger Menu & Title */}
         <div className="d-flex align-items-center gap-3">
+          {/* Simple Hamburger Menu Button */}
+          <button 
+            className="hamburger-button"
+            onClick={onToggleSidebar}
+          >
+            <div className="hamburger-line"></div>
+            <div className="hamburger-line"></div>
+            <div className="hamburger-line"></div>
+          </button>
+          
+          {/* Title */}
           <div className="d-flex flex-column">
-            <h1 className="h5 mb-0 fw-bold text-dark">Asset Management </h1>
-            {/* <small className="text-light">{currentDate} IST</small> */}
+            <h1 className="h5 mb-0 fw-bold text-dark">Asset Management</h1>
           </div>
         </div>
 
@@ -130,31 +186,9 @@ const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar })
             placement="bottomRight"
             trigger={["click"]}
           >
-            <div 
-              className="d-flex align-items-center justify-content-center"
-              style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: 'transparent',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                position: 'relative',
-                border: '2px solid #e9ecef'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#f8f9fa';
-                e.target.style.borderColor = '#28a745';
-                e.target.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.borderColor = '#e9ecef';
-                e.target.style.transform = 'scale(1)';
-              }}
-            >
+            <div className="d-flex align-items-center justify-content-center notification-icon">
               <Badge count={notifications.length} size="small">
-                <FaBell size={16} style={{ color: '#495057' }} />
+                <FaBell size={16} className="bell-icon" />
               </Badge>
             </div>
           </Dropdown>
@@ -165,37 +199,59 @@ const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar })
             placement="bottomRight"
             trigger={["click"]}
           >
-            <div 
-              className="d-flex align-items-center justify-content-center"
-              style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                border: '2px solid #e9ecef'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#e9ecef';
-                e.target.style.transform = 'scale(1.05)';
-                e.target.style.borderColor = '#28a745';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#f8f9fa';
-                e.target.style.transform = 'scale(1)';
-                e.target.style.borderColor = '#e9ecef';
-              }}
-            >
+            <div className="d-flex align-items-center gap-2 user-profile-container">
               <Avatar 
                 size={24} 
                 icon={<FaUserCircle />} 
-                style={{ color: '#495057' }}
+                className="avatar-icon"
               />
+              <div className="d-flex flex-column">
+                <span className="fw-semibold text-dark user-name">
+                  {user.name || 'Admin'}
+                </span>
+                <span className="text-muted user-role">
+                  Administrator
+                </span>
+              </div>
+              <FaChevronDown size={10} className="chevron-icon" />
             </div>
           </Dropdown>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        title={
+          <div className="d-flex align-items-center gap-2">
+            <FaSignOutAlt className="text-danger" />
+            <span>Confirm Logout</span>
+          </div>
+        }
+        open={showLogoutModal}
+        onOk={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+        okText="Yes, Logout"
+        cancelText="Cancel"
+        okButtonProps={{
+          danger: true,
+          style: { backgroundColor: '#dc3545', borderColor: '#dc3545' }
+        }}
+        cancelButtonProps={{
+          style: { borderColor: '#6c757d', color: '#6c757d' }
+        }}
+        centered
+        width={400}
+      >
+        <div className="text-center py-3">
+          <div className="mb-3">
+            <FaSignOutAlt size={48} className="text-danger" />
+          </div>
+          <h5 className="mb-2">Are you sure you want to logout?</h5>
+          <p className="text-muted mb-0">
+            You will be redirected to the login page and will need to sign in again to access the system.
+          </p>
+        </div>
+      </Modal>
     </header>
   );
 };

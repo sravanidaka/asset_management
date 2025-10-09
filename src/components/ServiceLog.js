@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import CustomBreadcrumb from './common/Breadcrumb';
+import BackNavigation from './common/BackNavigation';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../App.css';
 import {
@@ -115,6 +117,12 @@ const ServiceLog = () => {
 
   return (
     <div className="container-fluid p-1">
+      {/* Top Navigation Bar - Breadcrumb Only */}
+      <div className="d-flex justify-content-end align-items-center mb-3">
+        {/* Breadcrumb Navigation */}
+        <CustomBreadcrumb />
+      </div>
+      
       <h2 className="mb-1">Maintenance/Service Call Log</h2>
       <p className="mt-0">Track maintenance, repairs, AMC, calibration, etc.</p>
       

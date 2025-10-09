@@ -19,7 +19,7 @@ import ServiceLog from './components/ServiceLog';
 import Requests from './components/Requests';
 import History from './components/History';
 import User from './components/User';
-// import Login from './components/Login'; // Commented out - no authentication needed
+import Login from './components/Login';
 import NewAudit from './components/NewAudit';
 import AuditPlan from './components/AuditPlan';
 import AssignTeam from './components/AssignTeam';
@@ -45,6 +45,15 @@ function Layout({ setIsAuthenticated }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Ensure authentication is maintained
+  useEffect(() => {
+    const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+    if (!authStatus) {
+      console.log('Authentication lost, redirecting to login');
+      navigate('/login');
+    }
+  }, [location, navigate]);
+
   // Handle window resize to show/hide sidebar appropriately
   useEffect(() => {
     const handleResize = () => {
@@ -63,11 +72,9 @@ function Layout({ setIsAuthenticated }) {
   }, []);
 
   const handleLogout = () => {
-    // Commented out logout functionality - no authentication needed
-    // localStorage.removeItem('isAuthenticated');
-    // setIsAuthenticated(false);
-    // navigate('/login');
-    console.log('Logout clicked - but authentication is disabled');
+    localStorage.removeItem('isAuthenticated');
+    setIsAuthenticated(false);
+    navigate('/login');
   };
 
   const handleNavClick = (screen) => {
@@ -100,12 +107,13 @@ function Layout({ setIsAuthenticated }) {
 
   return (
     <div className="app-layout">
-      <Header handleLogout={handleLogout} onToggleSidebar={toggleSidebar} />
+      <Header handleLogout={handleLogout} onToggleSidebar={toggleSidebar} sidebarCollapsed={!sidebarOpen} />
       <Sidebar 
         activeScreen={getCurrentScreen()} 
         handleNavClick={handleNavClick} 
         handleLogout={handleLogout} 
         isOpen={sidebarOpen}
+        collapsed={!sidebarOpen}
       />
       {/* Mobile backdrop */}
       {window.innerWidth <= 768 && sidebarOpen && (
@@ -114,7 +122,7 @@ function Layout({ setIsAuthenticated }) {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <main className="main-content">
+      <main className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <div className="container-fluid content">
           <Routes>
               <Route path="/" element={<Dashboard />} />
@@ -160,33 +168,68 @@ function Layout({ setIsAuthenticated }) {
 }
 
 function App() {
-  // Commented out authentication - always show dashboard
-  // const [isAuthenticated, setIsAuthenticated] = useState(() => {
-  //   return localStorage.getItem('isAuthenticated') === 'true';
-  // });
-  // const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect(() => {
-  //   setIsLoading(false);
-  // }, []);
+  useEffect(() => {
+    // Check authentication status from localStorage
+    const checkAuth = () => {
+      const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+      console.log('Checking auth status:', authStatus);
+      setIsAuthenticated(authStatus);
+      setIsLoading(false);
+    };
 
-  // if (isLoading) {
-  //   return (
-  //     <div className="d-flex justify-content-center align-items-center min-vh-100">
-  //       <div className="spinner-border text-primary" role="status">
-  //         <span className="visually-hidden">Loading...</span>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+    // Small delay to ensure localStorage is available
+    const timer = setTimeout(checkAuth, 100);
+
+    // Listen for storage changes (in case of multiple tabs)
+    const handleStorageChange = (e) => {
+      if (e.key === 'isAuthenticated') {
+        console.log('Storage change detected:', e.newValue);
+        setIsAuthenticated(e.newValue === 'true');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Function to handle authentication state changes
+  const handleAuthChange = (authStatus) => {
+    setIsAuthenticated(authStatus);
+    if (!authStatus) {
+      localStorage.removeItem('isAuthenticated');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center min-vh-100">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>
       <Routes>
-        {/* <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} /> */}
+        <Route path="/login" element={<Login setIsAuthenticated={handleAuthChange} />} />
         <Route
           path="/*"
-          element={<Layout setIsAuthenticated={() => {}} />}
+          element={
+            isAuthenticated ? (
+              <Layout setIsAuthenticated={handleAuthChange} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
       </Routes>
     </Router>
