@@ -1,43 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
-import Reports from './components/Reports';
-import Financials from './components/Financials';
-import Compliance from './components/Compliance';
-import DisposalReport from './components/DisposalReport';
-import Settings from './components/Settings';
-import Dashboard from './components/Dashboard';
-import Register from './components/Register';
-import AddNew from './components/AddNew';
-import Procure from './components/Procure';
-import Allocate from './components/Allocate';
-import Transfer from './components/Transfer';
-import Financial from './components/Financial';
-import Disposal from './components/Disposal';
-import Schedule from './components/Schedule';
-import ServiceLog from './components/ServiceLog';
-import Requests from './components/Requests';
-import History from './components/History';
-import User from './components/User';
-import Login from './components/Login';
-import NewAudit from './components/NewAudit';
-import AuditPlan from './components/AuditPlan';
-import AssignTeam from './components/AssignTeam';
-import AuditExecute from './components/AuditExecute';
-import AuditReview from './components/AuditReview';
-import ManageCategory from './components/ManageCategory';
-import ManageStatus from './components/ManageStatus';
-import ManageLocation from './components/ManageLocation';
-import AllDepartments from './components/AllDepartments';
-import ManageVendor from './components/ManageVendor';
-import PaymentMethods from './components/PaymentMethods';
-import ServiceTypes from './components/ServiceTypes';
-import ApprovalHierarchies from './components/ApprovalHierarchies';
-import Roles from './components/Roles';
-import Sidebar from './components/common/Sidebar';
-import Navbar from './components/Navbar';
-import Header from './components/common/Header';
-import Footer from './components/common/Footer';
+import { isAuthenticated as checkAuth, logout } from './utils/authUtils';
+import Reports from './pages/Reports/Reports';
+import AssetFinancialReport from './pages/Reports/AssetFinancialReport';
+import AssetMasterSummaryReport from './pages/Reports/AssetMasterSummaryReport';
+import AssetLifecycleReport from './pages/Reports/AssetLifecycleReport';
+import AssetMovementTransferReport from './pages/Reports/AssetMovementTransferReport';
+import MaintenanceRepairReport from './pages/Reports/MaintenanceRepairReport';
+import AssetUtilizationReport from './pages/Reports/AssetUtilizationReport';
+import ComplianceAuditReport from './pages/Reports/ComplianceAuditReport';
+import FaultTrendMTTRReport from './pages/Reports/FaultTrendMTTRReport';
+import WarrantyAMCTracker from './pages/Reports/WarrantyAMCTracker';
+import AssetProcurementDeploymentReport from './pages/Reports/AssetProcurementDeploymentReport';
+import InventoryAgingReport from './pages/Reports/InventoryAgingReport';
+import Compliance from './pages/Reports/Compliance/Compliance';
+import DisposalReport from './pages/Reports/Disposalreport';
+import Settings from './pages/Reports/Settings/Settings';
+import Dashboard from './pages/Dashboard/Dashboard';
+import Register from './pages/Assets/Register';
+import AddNew from './pages/Assets/AddNew';
+import Procure from './pages/Assets/Procure';
+import Allocate from './pages/Assets/Allocate';
+import Transfer from './pages/Assets/Transfer';
+import Financial from './pages/Assets/Financial';
+import Disposal from './pages/Assets/Disposal';
+import DisposalReports from './pages/Reports/DisposalReports';
+import Financials from './pages/Reports/Financials';
+import Schedule from './pages/Maintainance/Schedule';
+import ServiceLog from './pages/Maintainance/ServiceLog';
+import Requests from './pages/Maintainance/Requests';
+import History from './pages/Maintainance/History';
+import User from './pages/UserManagement/User';
+import Login from './pages/Login';
+import NewAudit from './pages/Reports/Compliance/NewAudit';
+import AuditPlan from './pages/Reports/Compliance/AuditPlan';
+import AssignTeam from './pages/Reports/Compliance/AssignTeam';
+import AuditExecute from './pages/Reports/Compliance/AuditExecute';
+import AuditReview from './pages/Reports/Compliance/AuditReview';
+import ManageCategory from './pages/Reports/Settings/ManageCategory';
+import ManageStatus from './pages/Reports/Settings/ManageStatus';
+import ManageLocation from './pages/Reports/Settings/ManageLocation';
+import AllDepartments from './pages/Reports/Settings/AllDepartments';
+import ManageVendor from './pages/Vendor/ManageVendor';
+import PaymentMethods from './pages/Reports/Settings/PaymentMethods';
+import ServiceTypes from './pages/Reports/Settings/ServiceTypes';
+import ApprovalHierarchies from './pages/Reports/Settings/ApprovalHierarchies';
+import Roles from './pages/UserManagement/Roles';
+import Sidebar from './components/Sidebar';
+import Navbar from './pages/Navbar';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import ManageEmployee from './pages/Reports/Settings/ManageEmployee';
+import ManageCompany from './pages/Reports/Settings/ManageCompany';
+import ManageProducts from './pages/Reports/Settings/ManageProducts';
+import AssetSpecification from './pages/Reports/Settings/AssetSpecification';
 
 // Layout component that wraps all authenticated routes
 function Layout({ setIsAuthenticated }) {
@@ -47,7 +64,7 @@ function Layout({ setIsAuthenticated }) {
 
   // Ensure authentication is maintained
   useEffect(() => {
-    const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+    const authStatus = checkAuth();
     if (!authStatus) {
       console.log('Authentication lost, redirecting to login');
       navigate('/login');
@@ -72,9 +89,8 @@ function Layout({ setIsAuthenticated }) {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
+    logout();
     setIsAuthenticated(false);
-    navigate('/login');
   };
 
   const handleNavClick = (screen) => {
@@ -128,9 +144,21 @@ function Layout({ setIsAuthenticated }) {
               <Route path="/" element={<Dashboard />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/asset-financial" element={<AssetFinancialReport />} />
+              <Route path="/asset-master-summary" element={<AssetMasterSummaryReport />} />
+              <Route path="/assetlifecycle" element={<AssetLifecycleReport />} />
+              <Route path="/asset-movement-transfer" element={<AssetMovementTransferReport />} />
+              <Route path="/maintenance-repair" element={<MaintenanceRepairReport />} />
+              <Route path="/asset-utilization" element={<AssetUtilizationReport />} />
+              <Route path="/compliance-audit" element={<ComplianceAuditReport />} />
+              <Route path="/fault-trend-mttr" element={<FaultTrendMTTRReport />} />
+              <Route path="/warranty-amc-tracker" element={<WarrantyAMCTracker />} />
+              <Route path="/asset-procurement-deployment" element={<AssetProcurementDeploymentReport />} />
+              <Route path="/disposal-report" element={<DisposalReport />} />
+              <Route path="/inventory-aging" element={<InventoryAgingReport />} />
               <Route path="/financials" element={<Financials />} />
+              <Route path="/disposal-reports" element={<DisposalReports />} />
               <Route path="/compliance" element={<Compliance setActiveScreen={handleNavClick} />} />
-              <Route path="/disposalreport" element={<DisposalReport />} />
               <Route path="/settings" element={<Settings onNavigate={handleNavClick} />} />
               <Route path="/register" element={<Register />} />
               <Route path="/addnew" element={<AddNew />} />
@@ -147,9 +175,9 @@ function Layout({ setIsAuthenticated }) {
               <Route path="/roles" element={<Roles />} />
               <Route path="/new-audit" element={<NewAudit setActiveScreen={handleNavClick} />} />
               <Route path="/audit-plan" element={<AuditPlan setActiveScreen={handleNavClick} />} />
+              <Route path="/audit-execute" element={<AuditExecute setActiveScreen={handleNavClick} />} />
+              <Route path="/audit-review" element={<AuditReview setActiveScreen={handleNavClick} />} />
               <Route path="/assign-team" element={<AssignTeam setActiveScreen={handleNavClick} />} />
-              <Route path="/execute" element={<AuditExecute setActiveScreen={handleNavClick} />} />
-              <Route path="/review" element={<AuditReview setActiveScreen={handleNavClick} />} />
               <Route path="/ManageCategory" element={<ManageCategory onNavigate={handleNavClick} />} />
               <Route path="/all-departments" element={<AllDepartments onNavigate={handleNavClick} />} />
               <Route path="/ManageStatus" element={<ManageStatus onNavigate={handleNavClick} />} />
@@ -158,6 +186,10 @@ function Layout({ setIsAuthenticated }) {
               <Route path="/PaymentMethods" element={<PaymentMethods onNavigate={handleNavClick} />} />
               <Route path="/ServiceTypes" element={<ServiceTypes onNavigate={handleNavClick} />} />
               <Route path="/ApprovalHierarchies" element={<ApprovalHierarchies onNavigate={handleNavClick} />} />
+              <Route path="/manage-employee" element={<ManageEmployee onNavigate={handleNavClick} />} />
+              <Route path="/manage-company" element={<ManageCompany onNavigate={handleNavClick} />} />
+              <Route path="/manage-products" element={<ManageProducts onNavigate={handleNavClick} />} />
+              <Route path="/asset-specifications" element={<AssetSpecification onNavigate={handleNavClick} />} />
               <Route path="/navbar" element={<Navbar onNavigate={handleNavClick} />} />
             </Routes>
           </div>
@@ -172,22 +204,23 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication status from localStorage
-    const checkAuth = () => {
-      const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+    // Check authentication status using auth utils
+    const checkAuthStatus = () => {
+      const authStatus = checkAuth();
       console.log('Checking auth status:', authStatus);
       setIsAuthenticated(authStatus);
       setIsLoading(false);
     };
 
-    // Small delay to ensure localStorage is available
-    const timer = setTimeout(checkAuth, 100);
+    // Small delay to ensure sessionStorage is available
+    const timer = setTimeout(checkAuthStatus, 100);
 
     // Listen for storage changes (in case of multiple tabs)
     const handleStorageChange = (e) => {
-      if (e.key === 'isAuthenticated') {
+      if (e.key === 'isAuthenticated' || e.key === 'token') {
         console.log('Storage change detected:', e.newValue);
-        setIsAuthenticated(e.newValue === 'true');
+        const authStatus = checkAuth();
+        setIsAuthenticated(authStatus);
       }
     };
 
@@ -203,7 +236,7 @@ function App() {
   const handleAuthChange = (authStatus) => {
     setIsAuthenticated(authStatus);
     if (!authStatus) {
-      localStorage.removeItem('isAuthenticated');
+      logout();
     }
   };
 

@@ -4,11 +4,13 @@ body {
   background: #fafafa;
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* Prevent horizontal scroll */
+  overflow-x: hidden;
+  /* Prevent horizontal scroll */
 }
 
 /* Ensure html and body don't interfere with full-width elements */
-html, body {
+html,
+body {
   width: 100%;
   margin: 0;
   padding: 0;
@@ -34,7 +36,7 @@ html, body {
   border: 1px solid #e5e5e5;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -46,7 +48,7 @@ html, body {
 .form-card:hover,
 .transfer-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 .card-title,
@@ -107,7 +109,8 @@ html, body {
 .card .btn,
 .custom-report-card .btn,
 .report-card .btn {
-  background-color: #28a745; /* Consistent green color */
+  background-color: #28a745;
+  /* Consistent green color */
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -116,7 +119,7 @@ html, body {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .btn:hover,
@@ -131,9 +134,10 @@ html, body {
 .card .btn:hover,
 .custom-report-card .btn:hover,
 .report-card .btn:hover {
-  background-color: #218838; /* Darker green on hover */
+  background-color: #218838;
+  /* Darker green on hover */
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .btn:active,
@@ -148,9 +152,10 @@ html, body {
 .card .btn:active,
 .custom-report-card .btn:active,
 .report-card .btn:active {
-  background-color: #1e7e34; /* Even darker on active */
+  background-color: #1e7e34;
+  /* Even darker on active */
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .btn:focus,
@@ -165,7 +170,7 @@ html, body {
 .card .btn:focus,
 .custom-report-card .btn:focus,
 .report-card .btn:focus {
-  outline: 3px solid rgba(40,167,69,0.4);
+  outline: 3px solid rgba(40, 167, 69, 0.4);
   outline-offset: 2px;
 }
 
@@ -212,7 +217,7 @@ textarea.form-control {
 .form-select:focus,
 textarea.form-control:focus {
   border-color: #28a745;
-  box-shadow: 0 0 0 0.2rem rgba(40,167,69,0.25);
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
 }
 
 .form-label,
@@ -281,11 +286,26 @@ label.small {
   color: #777;
 }
 
-.bg-warning { background-color: #ffc107; color: #000; }
-.bg-success { background-color: #28a745 }
-.bg-info { background-color: #17a2b8; }
-.bg-danger { background-color: #dc3545; }
-.bg-secondary { background-color: #6c757d; }
+.bg-warning {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.bg-success {
+  background-color: #28a745
+}
+
+.bg-info {
+  background-color: #17a2b8;
+}
+
+.bg-danger {
+  background-color: #dc3545;
+}
+
+.bg-secondary {
+  background-color: #6c757d;
+}
 
 /* Sidebar styles */
 .af-sidebar {
@@ -293,15 +313,22 @@ label.small {
   background-color: #ffffff;
   border-right: 1px solid #e9ecef;
   position: fixed;
-  top: 0; /* Start from very top of page */
+  top: 0;
+  /* Start from very top of page */
   left: 0;
   align-self: flex-start;
-  z-index: 1000; /* Higher z-index to overlay header */
-  width: 280px; /* Explicit width for consistency */
-  height: 100vh; /* Full viewport height */
-  overflow-y: auto; /* Scroll only when content overflows */
-  scrollbar-width: thin; /* For Firefox */
-  scrollbar-color: #ccc #f1f1f1; /* For Firefox */
+  z-index: 1000;
+  /* Higher z-index to overlay header */
+  width: 280px;
+  /* Explicit width for consistency */
+  height: 100vh;
+  /* Full viewport height */
+  overflow-y: auto;
+  /* Scroll only when content overflows */
+  scrollbar-width: thin;
+  /* For Firefox */
+  scrollbar-color: #ccc #f1f1f1;
+  /* For Firefox */
 }
 
 /* Hide default scrollbar for Webkit browsers and customize */
@@ -324,14 +351,15 @@ label.small {
 
 /* Ensure the nav content doesn't overflow unnecessarily */
 .af-nav {
-  padding-bottom: 1rem; /* Add padding to avoid content being cut off */
+  padding-bottom: 1rem;
+  /* Add padding to avoid content being cut off */
 }
 
 .af-brand {
   font-weight: 700;
   font-size: 1.25rem;
 }
- 
+
 .af-nav .nav-link {
   color: #4a4f57;
   border-radius: .5rem;
@@ -379,7 +407,7 @@ label.small {
   margin-bottom: 1.5rem;
 }
 
-.gap-2 > * {
+.gap-2>* {
   margin-right: 0.5rem;
 }
 
@@ -598,7 +626,8 @@ label.small {
 
 /* Override .content for login page */
 .login-page .content {
-  align-items: center; /* Center login card vertically */
+  align-items: center;
+  /* Center login card vertically */
 }
 
 .login-container {
@@ -625,9 +654,24 @@ label.small {
   background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
 }
 
+.login_clip_path {
+  clip-path: ellipse(120% 135% at -20% -10%);
+}
+
 .logo {
   text-align: center;
   margin-bottom: 20px;
+}
+
+button.signInBtn {
+  background-color: #009688 !important;
+}
+
+button.btn.btn-sm.rounded-circle.social_icons_btn {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  width: 40px;
+  height: 40px;
 }
 
 .logo-icon {
@@ -657,8 +701,13 @@ label.small {
 }
 
 @keyframes shine {
-  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
 }
 
 .logo-icon i {
@@ -859,6 +908,7 @@ label.small {
     opacity: 0;
     transform: translateY(-30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -946,14 +996,9 @@ label.small {
 /* Notification Toast */
 .toast {
   position: fixed;
-  bottom: 30px;
+  top: 30px;
   right: 30px;
-  background: white;
-  border-radius: 10px;
-  padding: 15px 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
+  border-radius: 6px;
   transform: translateX(400px);
   transition: transform 0.3s ease;
   z-index: 2000;
@@ -1046,8 +1091,15 @@ label.small {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(10deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(10deg);
+  }
 }
 
 /* Responsive Design for Login */
@@ -1055,15 +1107,15 @@ label.small {
   .login-container {
     padding: 20px;
   }
-  
+
   .logo h1 {
     font-size: 24px;
   }
-  
+
   .modal-content {
     padding: 20px;
   }
-  
+
   .toast {
     left: 20px;
     right: 20px;
@@ -1135,8 +1187,9 @@ label.small {
   font-size: 13px;
 }
 
-.manage-category .btn + .btn {
-  margin-left: 20px; /* increased space */
+.manage-category .btn+.btn {
+  margin-left: 20px;
+  /* increased space */
 }
 
 .site-form-in-drawer-wrapper {
@@ -1168,7 +1221,8 @@ label.small {
 
 /* Fix for forms going under header */
 .content {
-  padding-top: 15px; /* Reduced padding to account for smaller header */
+  padding-top: 15px;
+  /* Reduced padding to account for smaller header */
 }
 
 /* Enhanced Header Styles */
@@ -1212,22 +1266,30 @@ header .container-fluid {
 
 /* Ensure main content doesn't overlap with header and sidebar */
 .main-content {
-  margin-top: 0 !important; /* No top margin since sidebar overlays header */
-  margin-left: 280px; /* Account for fixed sidebar width */
+  margin-top: 0 !important;
+  /* No top margin since sidebar overlays header */
+  margin-left: 280px;
+  /* Account for fixed sidebar width */
   padding: 20px;
-  padding-top: 10px; /* Further reduced top padding */
-  min-height: 100vh; /* Full viewport height */
+  padding-top: 10px;
+  /* Further reduced top padding */
+  min-height: 100vh;
+  /* Full viewport height */
   transition: margin-left 0.3s ease;
   position: relative;
-  z-index: 1; /* Ensure content is above background */
+  z-index: 1;
+  /* Ensure content is above background */
 }
 
 /* Ensure main content doesn't overlap with header and sidebar */
 main {
-  margin-top: 0; /* No top margin since sidebar overlays header */
-  margin-left: 280px; /* Account for fixed sidebar width */
+  margin-top: 0;
+  /* No top margin since sidebar overlays header */
+  margin-left: 280px;
+  /* Account for fixed sidebar width */
   padding-top: 0;
-  min-height: 100vh; /* Full viewport height */
+  min-height: 100vh;
+  /* Full viewport height */
 }
 
 /* Ensure main content headings are visible */
@@ -1265,10 +1327,12 @@ main {
 /* Ensure container doesn't constrain header and footer */
 .container-fluid {
   position: relative;
+  padding: 1rem;
 }
 
 /* Override container constraints for header and footer */
-header, footer {
+header,
+footer {
   position: relative;
   z-index: 1;
   transform: translateX(0);
@@ -1281,6 +1345,23 @@ header, footer {
   z-index: 1050 !important;
 }
 
+/* Consistent drawer title styling */
+.ant-drawer-title,
+.ant-drawer .ant-drawer-title,
+.ant-drawer-header .ant-drawer-title,
+.ant-drawer .ant-drawer-header .ant-drawer-title {
+  color: #000 !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+}
+
+/* Fix blue section headings in drawers */
+.ant-drawer h4,
+.ant-drawer .ant-drawer-body h4,
+.ant-drawer .ant-drawer-content h4 {
+  color: #000 !important;
+}
+
 .ant-modal {
   z-index: 1050 !important;
 }
@@ -1291,19 +1372,25 @@ header, footer {
   background-color: #ffffff;
   border-right: 1px solid #e9ecef;
   position: fixed;
-  top: 0; /* Start from very top of page */
+  top: 0;
+  /* Start from very top of page */
   left: 0;
   align-self: flex-start;
-  z-index: 1000; /* Higher z-index to overlay header */
+  z-index: 1000;
+  /* Higher z-index to overlay header */
   width: 3px;
-  height: 100vh; /* Full viewport height */
+  height: 100vh;
+  /* Full viewport height */
   overflow-y: auto;
-  overflow-x: hidden; /* Prevent horizontal scrolling */
+  overflow-x: hidden;
+  /* Prevent horizontal scrolling */
   display: flex;
   flex-direction: column;
   /* Show scrollbar when needed */
-  scrollbar-width: thin; /* Firefox */
-  -ms-overflow-style: auto; /* Internet Explorer 10+ */
+  scrollbar-width: thin;
+  /* Firefox */
+  -ms-overflow-style: auto;
+  /* Internet Explorer 10+ */
 }
 
 /* Show scrollbar when needed */
@@ -1391,7 +1478,8 @@ header, footer {
 }
 
 .af-sidebar .nav-section:last-child {
-  margin-bottom: 2rem; /* Extra space for last section */
+  margin-bottom: 2rem;
+  /* Extra space for last section */
 }
 
 /* Collapsed sidebar styles */
@@ -1636,11 +1724,13 @@ header .container-fluid.sidebar-collapsed {
   padding: 1rem;
   border-bottom: 1px solid #e9ecef;
   background-color: #f8f9fa;
-  white-space: nowrap; /* Keep "Asset Management" in one line */
+  white-space: nowrap;
+  /* Keep "Asset Management" in one line */
   position: sticky;
   top: 0;
   z-index: 10;
-  margin: -12px -12px 0 -12px; /* Extend to sidebar edges */
+  margin: -12px -12px 0 -12px;
+  /* Extend to sidebar edges */
   padding: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1653,11 +1743,16 @@ header .container-fluid.sidebar-collapsed {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  overflow-x: hidden; /* Prevent horizontal scrolling */
-  height: calc(100vh - 100px); /* Use full available height minus header */
-  min-height: calc(100vh - 100px); /* Ensure minimum height */
-  position: relative; /* Ensure proper positioning */
-  padding-bottom: 2rem; /* Add bottom padding to ensure last items are visible */
+  overflow-x: hidden;
+  /* Prevent horizontal scrolling */
+  height: calc(100vh - 100px);
+  /* Use full available height minus header */
+  min-height: calc(100vh - 100px);
+  /* Ensure minimum height */
+  position: relative;
+  /* Ensure proper positioning */
+  padding-bottom: 2rem;
+  /* Add bottom padding to ensure last items are visible */
 }
 
 .af-nav .nav-link {
@@ -1735,10 +1830,10 @@ header .container-fluid.sidebar-collapsed {
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.3s ease !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
 }
 
-.btn:hover,
+/* .btn:hover,
 .btn-add:hover,
 .btn-apply:hover,
 .btn-clear:hover,
@@ -1754,7 +1849,7 @@ header .container-fluid.sidebar-collapsed {
   background-color: #218838 !important;
   transform: translateY(-2px) !important;
   box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important;
-}
+} */
 
 .btn:active,
 .btn-add:active,
@@ -1771,7 +1866,7 @@ header .container-fluid.sidebar-collapsed {
 .ant-btn:active {
   background-color: #1e7e34 !important;
   transform: translateY(0) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Button Variants */
@@ -1819,13 +1914,14 @@ header .container-fluid.sidebar-collapsed {
   .af-sidebar {
     width: 280px;
   }
-  
+
   .main-content {
     margin-left: 280px;
     padding: 20px;
-    padding-top: 10px; /* Consistent reduced top padding */
+    padding-top: 10px;
+    /* Consistent reduced top padding */
   }
-  
+
   header .container-fluid {
     padding-left: 300px !important;
   }
@@ -1836,21 +1932,22 @@ header .container-fluid.sidebar-collapsed {
   .af-sidebar {
     width: 260px;
   }
-  
+
   .main-content {
     margin-left: 260px;
     padding: 18px;
-    padding-top: 8px; /* Reduced top padding for laptops */
+    padding-top: 8px;
+    /* Reduced top padding for laptops */
   }
-  
+
   main {
     margin-left: 260px;
   }
-  
+
   header .container-fluid {
     padding-left: 280px !important;
   }
-  
+
   .dashboard-container h2 {
     font-size: 1.7rem !important;
     font-weight: 500 !important;
@@ -1862,42 +1959,45 @@ header .container-fluid.sidebar-collapsed {
   .af-sidebar {
     width: 220px;
   }
-  
+
   .main-content {
     margin-left: 220px;
     padding: 15px;
-    padding-top: 8px; /* Reduced top padding for tablets */
+    padding-top: 8px;
+    /* Reduced top padding for tablets */
   }
-  
+
   main {
     margin-left: 220px;
   }
-  
+
   header .container-fluid {
     padding-left: 240px !important;
   }
-  
+
   .dashboard-container h2 {
     font-size: 1.5rem !important;
     font-weight: 500 !important;
   }
-  
+
   .dashboard-container p {
     font-size: 0.95rem !important;
   }
-  
+
   /* Tablet-specific dashboard grid */
   .dashboard-container .row {
     margin: 0 -8px;
   }
-  
+
   .dashboard-container .col-md-4 {
     padding: 0 8px;
     margin-bottom: 16px;
   }
-  
+
   /* Card adjustments for tablets */
-  .card, .af-card, .custom-card {
+  .card,
+  .af-card,
+  .custom-card {
     padding: 15px;
     margin-bottom: 16px;
   }
@@ -1915,11 +2015,11 @@ header .container-fluid.sidebar-collapsed {
     transition: transform 0.3s ease;
     display: block !important;
   }
-  
+
   .af-sidebar.open {
     transform: translateX(0);
   }
-  
+
   /* Mobile sidebar backdrop */
   .sidebar-backdrop {
     position: fixed;
@@ -1931,25 +2031,26 @@ header .container-fluid.sidebar-collapsed {
     z-index: 999;
     display: none;
   }
-  
+
   .sidebar-backdrop.show {
     display: block;
   }
-  
+
   .main-content {
     margin-left: 0;
     padding: 12px;
-    padding-top: 5px; /* Minimal top padding for mobile */
+    padding-top: 5px;
+    /* Minimal top padding for mobile */
   }
-  
+
   main {
     margin-left: 0;
   }
-  
+
   header .container-fluid {
     padding-left: 20px !important;
   }
-  
+
   /* Mobile menu button - show on mobile */
   .mobile-menu-btn {
     display: block !important;
@@ -1965,46 +2066,48 @@ header .container-fluid.sidebar-collapsed {
     cursor: pointer;
     font-size: 0.9rem;
   }
-  
+
   .mobile-menu-btn:hover {
     background: #218838;
   }
-  
+
   .dashboard-container h2 {
     font-size: 1.3rem !important;
     font-weight: 500 !important;
     margin-bottom: 0.5rem !important;
   }
-  
+
   .dashboard-container p {
     font-size: 0.85rem !important;
     margin-bottom: 1rem !important;
   }
-  
+
   /* Mobile dashboard grid - single column */
   .dashboard-container .row {
     margin: 0 -6px;
   }
-  
+
   .dashboard-container .col-md-4 {
     padding: 0 6px;
     margin-bottom: 12px;
     flex: 0 0 100%;
     max-width: 100%;
   }
-  
+
   /* Card adjustments for mobile */
-  .card, .af-card, .custom-card {
+  .card,
+  .af-card,
+  .custom-card {
     padding: 12px;
     margin-bottom: 12px;
     border-radius: 8px;
   }
-  
+
   /* Chart adjustments for mobile */
   .dashboard-container canvas {
     max-height: 200px !important;
   }
-  
+
   /* Mobile sticky header */
   .sidebar-header {
     position: sticky;
@@ -2019,32 +2122,35 @@ header .container-fluid.sidebar-collapsed {
 @media (max-width: 576px) {
   .main-content {
     padding: 8px;
-    padding-top: 3px; /* Minimal top padding for small mobile */
+    padding-top: 3px;
+    /* Minimal top padding for small mobile */
   }
-  
+
   header .container-fluid {
     padding-left: 15px !important;
     padding-right: 15px !important;
   }
-  
+
   .dashboard-container h2 {
     font-size: 1.2rem !important;
     font-weight: 500 !important;
     margin-bottom: 0.3rem !important;
   }
-  
+
   .dashboard-container p {
     font-size: 0.8rem !important;
     margin-bottom: 0.8rem !important;
   }
-  
+
   /* Smaller cards on small mobile */
-  .card, .af-card, .custom-card {
+  .card,
+  .af-card,
+  .custom-card {
     padding: 10px;
     margin-bottom: 8px;
     border-radius: 6px;
   }
-  
+
   /* Adjust header elements for small screens */
   .mobile-menu-btn {
     top: 10px;
@@ -2052,7 +2158,7 @@ header .container-fluid.sidebar-collapsed {
     padding: 6px 10px;
     font-size: 0.8rem;
   }
-  
+
   /* Even smaller charts on small mobile */
   .dashboard-container canvas {
     max-height: 150px !important;
@@ -2072,7 +2178,7 @@ header .container-fluid.sidebar-collapsed {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s;
 }
 
@@ -2101,16 +2207,19 @@ header .container-fluid.sidebar-collapsed {
   background-color: #d4edda;
   color: #155724;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .nav-dropdown {
   margin-left: 15px;
   padding-left: 15px;
   margin-top: 5px;
-  position: relative; /* Ensure proper positioning */
-  width: calc(100% - 30px); /* Account for margins */
-  max-width: 100%; /* Prevent overflow */
+  position: relative;
+  /* Ensure proper positioning */
+  width: calc(100% - 30px);
+  /* Account for margins */
+  max-width: 100%;
+  /* Prevent overflow */
 }
 
 .nav-dropdown .nav-link {
@@ -2156,8 +2265,10 @@ header .container-fluid.sidebar-collapsed {
 
 .nav-section {
   margin-bottom: 8px;
-  position: relative; /* Ensure proper positioning */
-  width: 100%; /* Full width */
+  position: relative;
+  /* Ensure proper positioning */
+  width: 100%;
+  /* Full width */
 }
 
 /* Main navigation links (like Dashboard) */
@@ -2215,7 +2326,8 @@ footer {
 }
 
 /* Force header and footer to break out of container constraints */
-header, footer {
+header,
+footer {
   position: relative !important;
   width: 100vw !important;
   left: 50% !important;
@@ -2296,7 +2408,7 @@ body {
   margin: 0;
 }
 
-.breadcrumb-item + .breadcrumb-item::before {
+.breadcrumb-item+.breadcrumb-item::before {
   content: ">";
   color: #6c757d;
 }
@@ -2385,7 +2497,7 @@ body {
 .report-btn:hover {
   background-color: #218838 !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
 .report-btn:active {
@@ -2398,23 +2510,39 @@ body {
 }
 
 /* Prevent event bubbling in table actions */
-.ant-table-tbody > tr > td {
+.ant-table-tbody>tr>td {
   position: relative;
 }
 
-.ant-table-tbody > tr > td .ant-space {
+.ant-table-tbody>tr>td .ant-space {
   position: relative;
   z-index: 1;
 }
 
-.ant-table-tbody > tr > td .ant-btn {
+.ant-table-tbody>tr>td .ant-btn {
   position: relative;
   z-index: 2;
 }
 
-.ant-table-tbody > tr > td .ant-popconfirm {
+.ant-table-tbody>tr>td .ant-popconfirm {
   position: relative;
   z-index: 3;
+}
+
+/* Ensure tables display properly */
+.ant-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.ant-table {
+  min-width: 100%;
+}
+
+/* Fix table container padding */
+.container-fluid .ant-table-wrapper {
+  margin: 0;
+  padding: 0;
 }
 
 /* Responsive Reports Grid */
@@ -2424,7 +2552,7 @@ body {
     grid-template-rows: repeat(4, 1fr);
     gap: 6px;
   }
-  
+
   .report-btn {
     font-size: 0.8rem !important;
     padding: 6px 10px !important;
@@ -2435,14 +2563,13 @@ body {
   .reports-grid {
     gap: 4px;
   }
-  
+
   .report-btn {
     font-size: 0.75rem !important;
     padding: 5px 8px !important;
   }
-  
+
   .report-btn i {
     font-size: 0.8rem !important;
   }
 }
-

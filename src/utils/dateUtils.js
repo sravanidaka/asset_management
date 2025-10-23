@@ -2,14 +2,14 @@
 import dayjs from 'dayjs';
 
 /**
- * Format date for database storage (dd-mm-yy format)
+ * Format date for database storage (dd-mm-yyyy format)
  * @param {string|Date} dateValue - The date to format
  * @returns {string|null} - Formatted date string or null
  */
 export const formatDateForDB = (dateValue) => {
   if (!dateValue) return '';
   try {
-    return dayjs(dateValue).format('DD-MM-YY');
+    return dayjs(dateValue).format('DD-MM-YYYY');
   } catch (error) {
     console.error('Error formatting date:', error);
     return '';
@@ -17,14 +17,19 @@ export const formatDateForDB = (dateValue) => {
 };
 
 /**
- * Parse date from database (dd-mm-yy to YYYY-MM-DD for form inputs)
+ * Parse date from database (dd-mm-yyyy to YYYY-MM-DD for form inputs)
  * @param {string} dateValue - The date string from database
  * @returns {string|null} - Parsed date string or null
  */
 export const parseDateFromDB = (dateValue) => {
   if (!dateValue) return null;
   try {
-    // Handle dd-mm-yy format
+    // Handle dd-mm-yyyy format
+    if (dateValue.includes('-') && dateValue.length === 10) {
+      const [day, month, year] = dateValue.split('-');
+      return `${year}-${month}-${day}`;
+    }
+    // Handle dd-mm-yy format (legacy)
     if (dateValue.includes('-') && dateValue.length === 8) {
       const [day, month, year] = dateValue.split('-');
       const fullYear = year.length === 2 ? `20${year}` : year;
@@ -60,7 +65,12 @@ export const formatDateForDisplay = (dateValue) => {
 export const parseDateForDatePicker = (dateValue) => {
   if (!dateValue) return null;
   try {
-    // Handle dd-mm-yy format
+    // Handle dd-mm-yyyy format
+    if (dateValue.includes('-') && dateValue.length === 10) {
+      const [day, month, year] = dateValue.split('-');
+      return dayjs(`${year}-${month}-${day}`);
+    }
+    // Handle dd-mm-yy format (legacy)
     if (dateValue.includes('-') && dateValue.length === 8) {
       const [day, month, year] = dateValue.split('-');
       const fullYear = year.length === 2 ? `20${year}` : year;
