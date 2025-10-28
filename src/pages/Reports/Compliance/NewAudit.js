@@ -289,7 +289,7 @@ const NewAudit = ({ setActiveScreen }) => {
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Button 
+          {/* <Button 
             type="default" 
             size="small" 
             icon={<FaEye />}
@@ -298,7 +298,7 @@ const NewAudit = ({ setActiveScreen }) => {
               e.stopPropagation();
               console.log('View clicked for record:', record);
             }}
-          />
+          /> */}
           <Button 
             type="default" 
             size="small" 

@@ -539,12 +539,12 @@ const Financials = () => {
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button
+          {/* <Button
             type="text"
             icon={<FaEye />}
             onClick={() => console.log('View', record)}
             title="View"
-          />
+          /> */}
           <Button
             type="text"
             icon={<FaEdit />}
@@ -614,6 +614,7 @@ const Financials = () => {
             filters={filteredInfo}
             sorter={sortedInfo}
             message={message}
+            includeAllFields={true}
           />
           <Button
             type="primary"

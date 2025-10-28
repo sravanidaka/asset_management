@@ -30,7 +30,8 @@ function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true, co
         { key: 'allocate', label: 'Allocate', icon: FaHandHolding },
         { key: 'transfer', label: 'Transfer', icon: FaTruck },
         { key: 'financial', label: 'Financial', icon: FaRupeeSign },
-        { key: 'disposal', label: 'Disposal', icon: FaTrash }
+        { key: 'disposal', label: 'Disposal', icon: FaTrash },
+        { key: 'asset-history', label: 'Asset History', icon: FaHistory }
       ]
     },
     {
@@ -66,6 +67,7 @@ function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true, co
       items: [
         { key: 'user', label: 'User', icon: FaUsers },
         { key: 'roles', label: 'Roles', icon: FaUserShield },
+        { key: 'module', label: 'Module', icon: FaCog },
       ]
     }
   ];

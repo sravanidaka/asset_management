@@ -10,6 +10,7 @@ import {
   FaCog,
   FaSitemap,
   FaTags,
+  FaChartLine,
 } from "react-icons/fa";
 import CustomBreadcrumb from '../../../components/Breadcrumb';
 import BackNavigation from '../../../components/BackNavigation';
@@ -65,13 +66,13 @@ function Settings({ onNavigate }) {
       icon: <FaTags />,
       screen: "asset-specifications",
     },
-    {
-      title: "Payment Methods",
-      description: "Configure methods for asset payments.",
-      button: "Manage Payments",
-      icon: <FaCalculator />,
-      screen: "PaymentMethods",
-    },
+    // {
+    //   title: "Payment Methods",
+    //   description: "Configure methods for asset payments.",
+    //   button: "Manage Payments",
+    //   icon: <FaCalculator />,
+    //   screen: "PaymentMethods",
+    // },
     {
       title: "Service Types",
       description: "Define types of services related to assets.",
@@ -85,6 +86,13 @@ function Settings({ onNavigate }) {
       button: "Manage Hierarchies",
       icon: <FaSitemap />,
       screen: "ApprovalHierarchies",
+    },
+    {
+      title: "Depreciation Methods",
+      description: "Configure and manage depreciation calculation methods for your assets.",
+      button: "Manage Methods",
+      icon: <FaChartLine />,
+      screen: "manage-depreciation-methods",
     },
   ];
 
@@ -103,8 +111,8 @@ function Settings({ onNavigate }) {
      
       <p className="mt-0">Configure master values used across the system.</p>
 
-      <div className="card p-4 shadow-md">
-        <h6 className="fs-5 mb-3">Configurable Lists</h6>
+      
+      
         <div className="row">
           {cards.map((card, index) => (
             <div className="col-md-4 mb-3" key={index}>
@@ -128,7 +136,7 @@ function Settings({ onNavigate }) {
           ))}
         </div>
       </div>
-    </div>
+    
   );
 }
 

@@ -749,8 +749,7 @@ const AssetSpecification = () => {
       </div>
 
       {/* Table */}
-      <div className="card custom-shadow">
-        <div className="card-body">
+      
           <Table
             columns={columns}
             dataSource={filteredSpecifications}
@@ -763,8 +762,7 @@ const AssetSpecification = () => {
             }}
             scroll={{ x: 1500 }}
           />
-        </div>
-      </div>
+     
 
        {/* Drawer for Add/Edit Specification */}
        <Drawer

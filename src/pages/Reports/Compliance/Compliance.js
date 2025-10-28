@@ -248,7 +248,7 @@ const Compliance = ({ setActiveScreen }) => {
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Button 
+          {/* <Button 
             type="default" 
             size="small" 
             icon={<FaEye />}
@@ -257,7 +257,7 @@ const Compliance = ({ setActiveScreen }) => {
               e.stopPropagation();
               console.log('View clicked for record:', record);
             }}
-          />
+          /> */}
           <Button 
             type="default" 
             size="small" 
@@ -494,10 +494,7 @@ const Compliance = ({ setActiveScreen }) => {
         </div>
       </div>
 
-      <div className="card af-card mt-2">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="card-title mb-0">Compliance Policies</h5>
-        </div>
+     
         <Table
           columns={columns}
           dataSource={dataSource}
@@ -513,7 +510,7 @@ const Compliance = ({ setActiveScreen }) => {
           bordered
           size="middle"
         />
-      </div>
+      
 
       {/* Drawer Form */}
       <Drawer

@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import { isAuthenticated as checkAuth, logout } from './utils/authUtils';
+import tokenExpirationChecker from './utils/tokenExpirationChecker';
+import TokenExpirationWarning from './components/TokenExpirationWarning';
+import logoutManager from './utils/logoutManager';
+import './utils/logoutTest'; // Load logout test utilities
 import Reports from './pages/Reports/Reports';
 import AssetFinancialReport from './pages/Reports/AssetFinancialReport';
 import AssetMasterSummaryReport from './pages/Reports/AssetMasterSummaryReport';
@@ -25,6 +29,8 @@ import Allocate from './pages/Assets/Allocate';
 import Transfer from './pages/Assets/Transfer';
 import Financial from './pages/Assets/Financial';
 import Disposal from './pages/Assets/Disposal';
+import AssetHistory from './pages/Assets/AssetHistory';
+import AssetHistoryDetail from './pages/Assets/AssetHistoryDetail';
 import DisposalReports from './pages/Reports/DisposalReports';
 import Financials from './pages/Reports/Financials';
 import Schedule from './pages/Maintainance/Schedule';
@@ -32,6 +38,7 @@ import ServiceLog from './pages/Maintainance/ServiceLog';
 import Requests from './pages/Maintainance/Requests';
 import History from './pages/Maintainance/History';
 import User from './pages/UserManagement/User';
+import Module from './pages/UserManagement/Module';
 import Login from './pages/Login';
 import NewAudit from './pages/Reports/Compliance/NewAudit';
 import AuditPlan from './pages/Reports/Compliance/AuditPlan';
@@ -55,6 +62,7 @@ import ManageEmployee from './pages/Reports/Settings/ManageEmployee';
 import ManageCompany from './pages/Reports/Settings/ManageCompany';
 import ManageProducts from './pages/Reports/Settings/ManageProducts';
 import AssetSpecification from './pages/Reports/Settings/AssetSpecification';
+import ManageDepreciationMethod from './pages/Reports/Settings/ManageDepreciationMethod';
 
 // Layout component that wraps all authenticated routes
 function Layout({ setIsAuthenticated }) {
@@ -68,7 +76,15 @@ function Layout({ setIsAuthenticated }) {
     if (!authStatus) {
       console.log('Authentication lost, redirecting to login');
       navigate('/login');
+    } else {
+      // Start token expiration checker if user is authenticated
+      tokenExpirationChecker.start();
     }
+
+    // Cleanup token expiration checker on unmount
+    return () => {
+      tokenExpirationChecker.stop();
+    };
   }, [location, navigate]);
 
   // Handle window resize to show/hide sidebar appropriately
@@ -89,8 +105,13 @@ function Layout({ setIsAuthenticated }) {
   }, []);
 
   const handleLogout = () => {
-    logout();
-    setIsAuthenticated(false);
+    logoutManager.safeLogout(() => {
+      // Stop token expiration checker
+      tokenExpirationChecker.stop();
+      
+      logout(navigate);
+      setIsAuthenticated(false);
+    });
   };
 
   const handleNavClick = (screen) => {
@@ -123,6 +144,7 @@ function Layout({ setIsAuthenticated }) {
 
   return (
     <div className="app-layout">
+      <TokenExpirationWarning />
       <Header handleLogout={handleLogout} onToggleSidebar={toggleSidebar} sidebarCollapsed={!sidebarOpen} />
       <Sidebar 
         activeScreen={getCurrentScreen()} 
@@ -167,12 +189,15 @@ function Layout({ setIsAuthenticated }) {
               <Route path="/transfer" element={<Transfer />} />
               <Route path="/financial" element={<Financial />} />
               <Route path="/disposal" element={<Disposal />} />
+              <Route path="/asset-history" element={<AssetHistory />} />
+              <Route path="/asset-history-detail/:assetId" element={<AssetHistoryDetail />} />
               <Route path="/history" element={<History />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/service-log" element={<ServiceLog />} />
               <Route path="/requests" element={<Requests />} />
               <Route path="/user" element={<User />} />
               <Route path="/roles" element={<Roles />} />
+              <Route path="/module" element={<Module />} />
               <Route path="/new-audit" element={<NewAudit setActiveScreen={handleNavClick} />} />
               <Route path="/audit-plan" element={<AuditPlan setActiveScreen={handleNavClick} />} />
               <Route path="/audit-execute" element={<AuditExecute setActiveScreen={handleNavClick} />} />
@@ -190,6 +215,7 @@ function Layout({ setIsAuthenticated }) {
               <Route path="/manage-company" element={<ManageCompany onNavigate={handleNavClick} />} />
               <Route path="/manage-products" element={<ManageProducts onNavigate={handleNavClick} />} />
               <Route path="/asset-specifications" element={<AssetSpecification onNavigate={handleNavClick} />} />
+              <Route path="/manage-depreciation-methods" element={<ManageDepreciationMethod onNavigate={handleNavClick} />} />
               <Route path="/navbar" element={<Navbar onNavigate={handleNavClick} />} />
             </Routes>
           </div>
@@ -236,7 +262,8 @@ function App() {
   const handleAuthChange = (authStatus) => {
     setIsAuthenticated(authStatus);
     if (!authStatus) {
-      logout();
+      // Don't call logout here as it will cause double navigation
+      // The logout is already handled in the main logout flow
     }
   };
 

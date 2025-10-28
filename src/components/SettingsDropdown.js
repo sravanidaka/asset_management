@@ -15,7 +15,12 @@ import {
   getVendorNames,
   getAssetNames,
   getAssetIds,
-  getAssetTypes
+  getAssetIdsDropdown,
+  getAssetTypes,
+  getRequestedBy,
+  getUserNames,
+  getEmployeeList,
+  getDepreciationMethods
 } from '../services/settingsService';
 
 const { Option } = Select;
@@ -52,7 +57,12 @@ const SettingsDropdown = ({
     vendorNames: getVendorNames,
     assetNames: getAssetNames,
     assetIds: getAssetIds,
-    assetTypes: getAssetTypes
+    assetIdsDropdown: getAssetIdsDropdown,
+    assetTypes: getAssetTypes,
+    requestedBy: getRequestedBy,
+    userNames: getUserNames,
+    employeeList: getEmployeeList,
+    depreciationMethods: getDepreciationMethods
   };
 
   // Fetch dropdown data
@@ -68,6 +78,8 @@ const SettingsDropdown = ({
 
     try {
       const data = await fetchFunction();
+      console.log(`📊 ${type} dropdown data received:`, data);
+      console.log(`📊 ${type} dropdown data length:`, data?.length || 0);
       setOptions(data);
     } catch (err) {
       console.error(`Error fetching ${type}:`, err);
@@ -159,15 +171,20 @@ const SettingsDropdown = ({
       }
       {...props}
     >
-      {options.map((option) => (
-        <Option 
-          key={option.id || option.value} 
-          value={option.value || option.label}
-          title={option.label || option.value}
-        >
-          {option.label || option.value}
-        </Option>
-      ))}
+      {options.map((option, index) => {
+        console.log(`🎯 Rendering option ${index}:`, option);
+        // Use a combination of id and index to ensure unique keys
+        const uniqueKey = `${option.id || option.value}_${index}`;
+        return (
+          <Option 
+            key={uniqueKey} 
+            value={option.id || option.value} // Use ID as value
+            title={option.label || option.name || option.value}
+          >
+            {option.label || option.name || option.value} {/* Display name as label */}
+          </Option>
+        );
+      })}
     </Select>
   );
 };
@@ -209,8 +226,28 @@ export const AssetIdsDropdown = (props) => (
   <SettingsDropdown type="assetIds" placeholder="Select Asset ID" {...props} />
 );
 
+export const AssetIdsDropdownNew = (props) => (
+  <SettingsDropdown type="assetIdsDropdown" placeholder="Select Asset ID" {...props} />
+);
+
 export const AssetTypesDropdown = (props) => (
   <SettingsDropdown type="assetTypes" placeholder="Select Asset Type" {...props} />
+);
+
+export const RequestedByDropdown = (props) => (
+  <SettingsDropdown type="requestedBy" placeholder="Select Requested By" {...props} />
+);
+
+export const UserNamesDropdown = (props) => (
+  <SettingsDropdown type="userNames" placeholder="Select User" {...props} />
+);
+
+export const EmployeeListDropdown = (props) => (
+  <SettingsDropdown type="employeeList" placeholder="Select Employee" {...props} />
+);
+
+export const DepreciationMethodsDropdown = (props) => (
+  <SettingsDropdown type="depreciationMethods" placeholder="Select Depreciation Method" {...props} />
 );
 
 export default SettingsDropdown;

@@ -213,11 +213,11 @@ const Login = ({ setIsAuthenticated }) => {
           </a>
         </div>
 
-        <div className="text-center mb-2 text-muted">
+        {/* <div className="text-center mb-2 text-muted">
           Or <span className="text-dark fw-semibold">One-click sign in with</span>
-        </div>
+        </div> */}
 
-        <div className="d-flex justify-content-center gap-2 mb-3 flex-wrap social_icons">
+        {/* <div className="d-flex justify-content-center gap-2 mb-3 flex-wrap social_icons">
           <button type="button" className="btn btn-sm border d-flex justify-content-center align-items-center rounded-circle social_icons_btn">
             <i className="bi bi-google text-danger"></i>
           </button>
@@ -227,7 +227,7 @@ const Login = ({ setIsAuthenticated }) => {
           <button type="button" className="btn btn-sm border d-flex justify-content-center align-items-center rounded-circle social_icons_btn">
             <i className="bi bi-twitter text-info"></i>
           </button>
-        </div>
+        </div> */}
       </form>
     </div>
 

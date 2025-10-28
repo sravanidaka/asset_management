@@ -533,6 +533,7 @@ export default function ManageVendor({ onNavigate }) {
             filters={filteredInfo}
             sorter={sortedInfo}
             message={message}
+            includeAllFields={true}
           />
           <button
             className="btn btn-success px-4"

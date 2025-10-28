@@ -22,16 +22,60 @@ export const getToken = () => {
   return authInterceptor.getToken();
 };
 
+// Check if token is expired
+export const isTokenExpired = (token) => {
+  if (!token) return true;
+  
+  try {
+    // Decode JWT token to check expiration
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    // Check if token is expired (with 5 minute buffer)
+    const bufferTime = 5 * 60; // 5 minutes in seconds
+    return payload.exp < (currentTime + bufferTime);
+  } catch (error) {
+    console.error('Error checking token expiration:', error);
+    return true; // If we can't parse the token, consider it expired
+  }
+};
+
+// Check if user is authenticated and token is not expired
+export const isAuthenticatedAndValid = () => {
+  const token = getToken();
+  if (!token) return false;
+  
+  const isExpired = isTokenExpired(token);
+  if (isExpired) {
+    console.log('Token is expired, logging out user');
+    logout();
+    return false;
+  }
+  
+  return authInterceptor.isAuthenticated();
+};
+
 // Logout user and clear session
-export const logout = () => {
+export const logout = (navigate = null) => {
+  console.log('🔓 Logout function called');
+  
   // Clear all authentication data
   sessionStorage.removeItem('token');
   sessionStorage.removeItem('isAuthenticated');
   sessionStorage.removeItem('user');
   localStorage.removeItem('isAuthenticated');
   
-  // Redirect to login
-  window.location.href = '/login';
+  console.log('🧹 Session data cleared');
+  
+  // Use React Router navigation if available, otherwise fallback to window.location
+  if (navigate && typeof navigate === 'function') {
+    console.log('🧭 Using React Router navigation');
+    navigate('/login');
+  } else {
+    console.log('🧭 Using window.location fallback');
+    // Fallback for cases where navigate is not available
+    window.location.href = '/login';
+  }
 };
 
 // Check if user has specific role or permission

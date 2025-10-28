@@ -91,9 +91,19 @@ export const applySorting = (data, sorter) => {
 // Export to Excel with filters
 export const exportToExcel = (data, filename, sheetName = 'Sheet1', filters = {}, sorter = {}) => {
     try {
+        console.log('=== EXCEL EXPORT DEBUG START ===');
+        console.log('exportToExcel: Data length =', data.length);
+        console.log('exportToExcel: Data sample =', data[0]);
+        console.log('exportToExcel: Data keys =', Object.keys(data[0] || {}));
+        console.log('exportToExcel: Total fields =', Object.keys(data[0] || {}).length);
+        
         // Apply filters and sorting
         let filteredData = applyFilters(data, filters);
         filteredData = applySorting(filteredData, sorter);
+
+        console.log('exportToExcel: Filtered data length =', filteredData.length);
+        console.log('exportToExcel: Filtered data sample =', filteredData[0]);
+        console.log('exportToExcel: Filtered data keys =', Object.keys(filteredData[0] || {}));
 
         // Create a new workbook
         const workbook = XLSX.utils.book_new();
@@ -108,6 +118,9 @@ export const exportToExcel = (data, filename, sheetName = 'Sheet1', filters = {}
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
         const filterSuffix = Object.keys(filters).length > 0 ? '_filtered' : '';
         const finalFilename = `${filename}${filterSuffix}_${timestamp}.xlsx`;
+
+        console.log('exportToExcel: Final filename =', finalFilename);
+        console.log('=== EXCEL EXPORT DEBUG END ===');
 
         // Write and download file
         XLSX.writeFile(workbook, finalFilename);
@@ -558,9 +571,12 @@ export const getExportOptions = (reportType) => {
 export const formatDataForExport = (data, columns) => {
     console.log(`formatDataForExport: Processing ${data.length} rows with ${columns.length} columns`);
     console.log('formatDataForExport: Column keys:', columns.map(col => col.dataIndex || col.key).filter(key => key && key !== 'actions'));
+    console.log('formatDataForExport: Sample data row keys:', Object.keys(data[0] || {}));
 
-    return data.map(row => {
+    return data.map((row, index) => {
         const formattedRow = {};
+        
+        // Ensure ALL columns are included, even if they don't exist in the data
         columns.forEach(col => {
             const key = col.dataIndex || col.key;
             if (key && key !== 'actions') {
@@ -575,12 +591,51 @@ export const formatDataForExport = (data, columns) => {
                 } else if (value && typeof value === 'object' && value.props) {
                     // Handle React elements (like badges)
                     formattedRow[key] = value.props.children || '';
+                } else if (value === null || value === undefined || value === '') {
+                    // Ensure null/undefined/empty values are exported as empty strings
+                    formattedRow[key] = '';
                 } else {
                     // Include all fields, even if empty - this ensures all form fields are exported
                     formattedRow[key] = value || '';
                 }
             }
         });
+        
+        // Debug first row
+        if (index === 0) {
+            console.log('formatDataForExport: First row formatted keys:', Object.keys(formattedRow));
+            console.log('formatDataForExport: Total columns in export:', Object.keys(formattedRow).length);
+            console.log('formatDataForExport: First row sample values:', {
+                asset_id: formattedRow.asset_id,
+                asset_name: formattedRow.asset_name,
+                category: formattedRow.category,
+                manufacturer_brand: formattedRow.manufacturer_brand,
+                model_number: formattedRow.model_number,
+                serial_number: formattedRow.serial_number,
+                location: formattedRow.location,
+                assigned_user: formattedRow.assigned_user,
+                owning_department: formattedRow.owning_department,
+                building_facility: formattedRow.building_facility,
+                floor_room_number: formattedRow.floor_room_number,
+                gps_coordinates: formattedRow.gps_coordinates,
+                purchase_date: formattedRow.purchase_date,
+                warranty_expiry: formattedRow.warranty_expiry,
+                amc_expiry: formattedRow.amc_expiry,
+                warranty_period_months: formattedRow.warranty_period_months,
+                installation_date: formattedRow.installation_date,
+                order_number: formattedRow.order_number,
+                supplier_vendor: formattedRow.supplier_vendor,
+                current_book_value: formattedRow.current_book_value,
+                original_purchase_price: formattedRow.original_purchase_price,
+                asset_type: formattedRow.asset_type,
+                depreciation_method: formattedRow.depreciation_method,
+                invoice_receipt_files: formattedRow.invoice_receipt_files,
+                ownership_proof_files: formattedRow.ownership_proof_files,
+                insurance_policy_files: formattedRow.insurance_policy_files,
+                lease_agreement_files: formattedRow.lease_agreement_files
+            });
+        }
+        
         return formattedRow;
     });
 };

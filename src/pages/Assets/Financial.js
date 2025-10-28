@@ -23,7 +23,7 @@ import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { formatDateForDB, parseDateFromDB } from "../../utils/dateUtils";
 import { safeStringCompare } from '../../utils/tableUtils';
-import { AssetIdsDropdown } from '../../components/SettingsDropdown';
+import { AssetIdsDropdown, DepreciationMethodsDropdown } from '../../components/SettingsDropdown';
 
 const { Option } = Select;
 
@@ -550,7 +550,7 @@ const Financial = () => {
          
           <ExportButton
             data={dataSource}
-            columns={columns}
+            columns={null}
             filename="Financial_Management_Report"
             title="Financial Management Report"
             reportType="financial-management"
@@ -624,28 +624,11 @@ const Financial = () => {
                   label="Depreciation Method"
                   rules={[{ required: true, message: "Please select depreciation method" }]}
                 >
-                  <Select placeholder="Select depreciation method">
-                    <Option value="Straight Line Method (SLM)">Straight Line Method (SLM)</Option>
-                    <Option value="Written Down Value (WDV)">Written Down Value (WDV)</Option>
-                    <Option value="Double Declining Balance (DDB)">Double Declining Balance (DDB)</Option>
-                    <Option value="Sum of the Years' Digits (SYD)">Sum of the Years' Digits (SYD)</Option>
-                    <Option value="Units of Production">Units of Production</Option>
-                    <Option value="No Depreciation">No Depreciation</Option>
-                    <Option value="Accelerated Depreciation">Accelerated Depreciation</Option>
-                    <Option value="Declining Balance Method">Declining Balance Method</Option>
-                    <Option value="150% Declining Balance">150% Declining Balance</Option>
-                    <Option value="Compound Interest Method">Compound Interest Method</Option>
-                    <Option value="Annuity Method">Annuity Method</Option>
-                    <Option value="Revaluation Method">Revaluation Method</Option>
-                    <Option value="Group or Composite Method">Group or Composite Method</Option>
-                    <Option value="Depletion Method">Depletion Method</Option>
-                    <Option value="Machine Hour Rate Method">Machine Hour Rate Method</Option>
-                    <Option value="Sinking Fund Method">Sinking Fund Method</Option>
-                    <Option value="Insurance Policy Method">Insurance Policy Method</Option>
-                    <Option value="Activity-Based Depreciation">Activity-Based Depreciation</Option>
-                    <Option value="Usage-Based Depreciation">Usage-Based Depreciation</Option>
-                    <Option value="Custom Schedule">Custom Schedule</Option>
-                  </Select>
+                  <DepreciationMethodsDropdown 
+                    placeholder="Select depreciation method"
+                    showSearch={true}
+                    allowClear={true}
+                  />
                 </Form.Item>
               </Col>
               <Col span={8}>

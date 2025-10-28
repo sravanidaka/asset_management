@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import CustomBreadcrumb from '../../components/Breadcrumb';
 import { FaDownload, FaFilter, FaSearch, FaCalendarAlt, FaChartLine, FaDollarSign, FaPlus, FaEdit, FaEye, FaTrash, FaSave, FaTimes, FaArrowLeft } from 'react-icons/fa';
 import { Table, Input, Button, Space, Drawer, Form, Select, DatePicker, message, Popconfirm, Dropdown } from 'antd';
+import { DepreciationMethodsDropdown } from '../../components/SettingsDropdown';
 import { SearchOutlined, PlusOutlined, DownOutlined, FilterOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { handleExport, formatDataForExport, getExportOptions, applyFilters, applySorting } from '../../utils/exportUtils';
@@ -849,14 +850,14 @@ const AssetFinancialReport = () => {
             key: 'actions',
             render: (_, record) => (
                 <Space>
-                    <Button
+                    {/* <Button
                         ghost
                         icon={<FaEye />}
                         onClick={(e) => {
                             e.stopPropagation();
                             console.log('View', record);
                         }}
-                    />
+                    /> */}
                     <Button
                         ghost
                         icon={<FaEdit />}
@@ -1087,34 +1088,14 @@ const AssetFinancialReport = () => {
                             </div>
                             <div className="col-md-3">
                                 <label className="form-label">Depreciation Method</label>
-                                <Select
+                                <DepreciationMethodsDropdown
                                     placeholder="Select Method"
-                                    allowClear
+                                    allowClear={true}
+                                    showSearch={true}
                                     style={{ width: '100%' }}
                                     value={advancedFilters.depreciation_method}
                                     onChange={(value) => handleAdvancedFilterChange('depreciation_method', value)}
-                                >
-                                    <Select.Option value="Straight Line Method (SLM)">Straight Line Method (SLM)</Select.Option>
-                                    <Select.Option value="Written Down Value (WDV)">Written Down Value (WDV)</Select.Option>
-                                    <Select.Option value="Double Declining Balance (DDB)">Double Declining Balance (DDB)</Select.Option>
-                                    <Select.Option value="Sum of the Years' Digits (SYD)">Sum of the Years' Digits (SYD)</Select.Option>
-                                    <Select.Option value="Units of Production">Units of Production</Select.Option>
-                                    <Select.Option value="No Depreciation">No Depreciation</Select.Option>
-                                    <Select.Option value="Accelerated Depreciation">Accelerated Depreciation</Select.Option>
-                                    <Select.Option value="Declining Balance Method">Declining Balance Method</Select.Option>
-                                    <Select.Option value="150% Declining Balance">150% Declining Balance</Select.Option>
-                                    <Select.Option value="Compound Interest Method">Compound Interest Method</Select.Option>
-                                    <Select.Option value="Annuity Method">Annuity Method</Select.Option>
-                                    <Select.Option value="Revaluation Method">Revaluation Method</Select.Option>
-                                    <Select.Option value="Group or Composite Method">Group or Composite Method</Select.Option>
-                                    <Select.Option value="Depletion Method">Depletion Method</Select.Option>
-                                    <Select.Option value="Machine Hour Rate Method">Machine Hour Rate Method</Select.Option>
-                                    <Select.Option value="Sinking Fund Method">Sinking Fund Method</Select.Option>
-                                    <Select.Option value="Insurance Policy Method">Insurance Policy Method</Select.Option>
-                                    <Select.Option value="Activity-Based Depreciation">Activity-Based Depreciation</Select.Option>
-                                    <Select.Option value="Usage-Based Depreciation">Usage-Based Depreciation</Select.Option>
-                                    <Select.Option value="Custom Schedule">Custom Schedule</Select.Option>
-                                </Select>
+                                />
                             </div>
                             <div className="col-md-3">
                                 <label className="form-label">Financial Status</label>
@@ -1428,28 +1409,11 @@ const AssetFinancialReport = () => {
                                 label="Depreciation Method"
                                 rules={[{ required: true, message: 'Please select Depreciation Method' }]}
                             >
-                                <Select placeholder="Select depreciation method">
-                                    <Select.Option value="Straight Line Method (SLM)">Straight Line Method (SLM)</Select.Option>
-                                    <Select.Option value="Written Down Value (WDV)">Written Down Value (WDV)</Select.Option>
-                                    <Select.Option value="Double Declining Balance (DDB)">Double Declining Balance (DDB)</Select.Option>
-                                    <Select.Option value="Sum of the Years' Digits (SYD)">Sum of the Years' Digits (SYD)</Select.Option>
-                                    <Select.Option value="Units of Production">Units of Production</Select.Option>
-                                    <Select.Option value="No Depreciation">No Depreciation</Select.Option>
-                                    <Select.Option value="Accelerated Depreciation">Accelerated Depreciation</Select.Option>
-                                    <Select.Option value="Declining Balance Method">Declining Balance Method</Select.Option>
-                                    <Select.Option value="150% Declining Balance">150% Declining Balance</Select.Option>
-                                    <Select.Option value="Compound Interest Method">Compound Interest Method</Select.Option>
-                                    <Select.Option value="Annuity Method">Annuity Method</Select.Option>
-                                    <Select.Option value="Revaluation Method">Revaluation Method</Select.Option>
-                                    <Select.Option value="Group or Composite Method">Group or Composite Method</Select.Option>
-                                    <Select.Option value="Depletion Method">Depletion Method</Select.Option>
-                                    <Select.Option value="Machine Hour Rate Method">Machine Hour Rate Method</Select.Option>
-                                    <Select.Option value="Sinking Fund Method">Sinking Fund Method</Select.Option>
-                                    <Select.Option value="Insurance Policy Method">Insurance Policy Method</Select.Option>
-                                    <Select.Option value="Activity-Based Depreciation">Activity-Based Depreciation</Select.Option>
-                                    <Select.Option value="Usage-Based Depreciation">Usage-Based Depreciation</Select.Option>
-                                    <Select.Option value="Custom Schedule">Custom Schedule</Select.Option>
-                                </Select>
+                                <DepreciationMethodsDropdown 
+                                    placeholder="Select depreciation method"
+                                    showSearch={true}
+                                    allowClear={true}
+                                />
                             </Form.Item>
                             <Form.Item
                                 name="depreciation_rate"

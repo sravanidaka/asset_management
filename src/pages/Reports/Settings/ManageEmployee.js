@@ -11,11 +11,164 @@ import dayjs from 'dayjs';
 const ManageEmployee = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [form] = Form.useForm();
   const [selectedStatus, setSelectedStatus] = useState('');
+
+  // Fetch states from API
+  const fetchStates = async () => {
+    try {
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found for states');
+        return;
+      }
+
+      console.log('Fetching states from API...');
+      const response = await fetch('http://202.53.92.35:5004/api/settings/getStatesList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'x-access-token': token,
+        }
+      });
+      
+      console.log('States API Response status:', response.status);
+      
+      const result = await response.json();
+      console.log('States API Response:', result);
+      
+      // Handle different response structures
+      let data = [];
+      if (Array.isArray(result)) {
+        data = result;
+        console.log("Using direct array from states API");
+      } else if (result.data && Array.isArray(result.data)) {
+        data = result.data;
+      } else if (result.states && Array.isArray(result.states)) {
+        data = result.states;
+      } else if (result.result && Array.isArray(result.result)) {
+        data = result.result;
+      } else if (result.items && Array.isArray(result.items)) {
+        data = result.items;
+      } else {
+        console.error("Unexpected states API response structure:", result);
+        data = [];
+      }
+      
+      setStates(data);
+    } catch (error) {
+      console.error("Error fetching states:", error);
+      setStates([]);
+    }
+  };
+
+  // Fetch districts from API
+  const fetchDistricts = async () => {
+    try {
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found for districts');
+        return;
+      }
+
+      console.log('Fetching districts from API...');
+      const response = await fetch('http://202.53.92.35:5004/api/settings/getDistrictsList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'x-access-token': token,
+        }
+      });
+      
+      console.log('Districts API Response status:', response.status);
+      
+      const result = await response.json();
+      console.log('Districts API Response:', result);
+      
+      // Handle different response structures
+      let data = [];
+      if (Array.isArray(result)) {
+        data = result;
+        console.log("Using direct array from districts API");
+      } else if (result.data && Array.isArray(result.data)) {
+        data = result.data;
+      } else if (result.districts && Array.isArray(result.districts)) {
+        data = result.districts;
+      } else if (result.result && Array.isArray(result.result)) {
+        data = result.result;
+      } else if (result.items && Array.isArray(result.items)) {
+        data = result.items;
+      } else {
+        console.error("Unexpected districts API response structure:", result);
+        data = [];
+      }
+      
+      setDistricts(data);
+    } catch (error) {
+      console.error("Error fetching districts:", error);
+      setDistricts([]);
+    }
+  };
+
+  // Fetch roles from API
+  const fetchRoles = async () => {
+    try {
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found for roles');
+        return;
+      }
+
+      console.log('Fetching roles from API...');
+      const response = await fetch('http://202.53.92.35:5004/api/roles/getRolesList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'x-access-token': token,
+        }
+      });
+      
+      console.log('Roles API Response status:', response.status);
+      
+      const result = await response.json();
+      console.log('Roles API Response:', result);
+      
+      // Handle different response structures
+      let data = [];
+      if (Array.isArray(result)) {
+        data = result;
+        console.log("Using direct array from roles API");
+      } else if (result.data && Array.isArray(result.data)) {
+        data = result.data;
+      } else if (result.roles && Array.isArray(result.roles)) {
+        data = result.roles;
+      } else if (result.result && Array.isArray(result.result)) {
+        data = result.result;
+      } else if (result.items && Array.isArray(result.items)) {
+        data = result.items;
+      } else {
+        console.error("Unexpected roles API response structure:", result);
+        data = [];
+      }
+      
+      setRoles(data);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      setRoles([]);
+    }
+  };
 
   // Fetch employees from API
   const fetchEmployees = async () => {
@@ -28,7 +181,7 @@ const ManageEmployee = () => {
       }
 
       console.log('Fetching employees from API...');
-      const response = await fetch('http://202.53.92.35:5004/api/settings/getEmployeeList', {
+      const response = await fetch('http://202.53.92.35:5004/api/settings/getEmployeesList', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -80,6 +233,9 @@ const ManageEmployee = () => {
 
   useEffect(() => {
     fetchEmployees();
+    fetchRoles();
+    fetchStates();
+    fetchDistricts();
   }, []);
 
   // Handle create/update employee
@@ -93,22 +249,24 @@ const ManageEmployee = () => {
       }
 
       const employeeData = {
-        first_name: values.first_name,
-        last_name: values.last_name,
-        email: values.email,
-        phone: values.phone,
-        department: values.department,
-        reported_to: values.reported_to,
-        role: values.role,
-        date_of_joining: values.date_of_joining ? dayjs(values.date_of_joining).format('YYYY-MM-DD') : null,
-        status: values.status || 'Active'
+        emp_first_name: values.first_name,
+        emp_last_name: values.last_name,
+        emp_email: values.email,
+        emp_phone: values.phone,
+        district: values.district,
+        state: values.state,
+        emp_department: values.department,
+        emp_role: values.role,
+        emp_date_of_joining: values.date_of_joining ? dayjs(values.date_of_joining).format('YYYY-MM-DD') : null,
+        emp_reported_to: values.reported_to,
+        emp_status: values.status || 'Active'
       };
 
       let response;
       if (editingEmployee) {
         // Update existing employee
         const updateData = {
-          employee_id: editingEmployee.employee_id,
+          emp_id: editingEmployee.employee_id || editingEmployee.emp_id,
           ...employeeData
         };
         
@@ -171,15 +329,17 @@ const ManageEmployee = () => {
   const handleEdit = (record) => {
     setEditingEmployee(record);
     form.setFieldsValue({
-      first_name: record.first_name,
-      last_name: record.last_name,
-      email: record.email,
-      phone: record.phone,
-      department: record.department,
-      reported_to: record.reported_to,
-      role: record.role,
-      date_of_joining: record.date_of_joining ? dayjs(record.date_of_joining) : null,
-      status: record.status
+      first_name: record.emp_first_name || record.first_name,
+      last_name: record.emp_last_name || record.last_name,
+      email: record.emp_email || record.email,
+      phone: record.emp_phone || record.phone,
+      department: record.emp_department || record.department,
+      reported_to: record.emp_reported_to || record.reported_to,
+      role: record.emp_role || record.role,
+      district: record.district,
+      state: record.state,
+      date_of_joining: record.emp_date_of_joining || record.date_of_joining ? dayjs(record.emp_date_of_joining || record.date_of_joining) : null,
+      status: record.emp_status || record.status
     });
     setDrawerOpen(true);
   };
@@ -232,18 +392,20 @@ const ManageEmployee = () => {
   // Export functionality
   const exportEmployees = () => {
     const csvContent = [
-      ['S.No', 'First Name', 'Last Name', 'Email', 'Phone', 'Department', 'Reported To', 'Role', 'Date of Joining', 'Status'],
+      ['S.No', 'First Name', 'Last Name', 'Email', 'Phone', 'Department', 'Reported To', 'Role', 'District', 'State', 'Date of Joining', 'Status'],
       ...filteredEmployees.map((employee, index) => [
         index + 1,
-        employee.first_name,
-        employee.last_name,
-        employee.email || '',
-        employee.phone || '',
-        employee.department || '',
-        employee.reported_to || '',
-        employee.role || '',
-        employee.date_of_joining || '',
-        employee.status || ''
+        employee.emp_first_name || employee.first_name || '',
+        employee.emp_last_name || employee.last_name || '',
+        employee.emp_email || employee.email || '',
+        employee.emp_phone || employee.phone || '',
+        employee.emp_department || employee.department || '',
+        employee.emp_reported_to || employee.reported_to || '',
+        employee.emp_role || employee.role || '',
+        employee.district || '',
+        employee.state || '',
+        employee.emp_date_of_joining || employee.date_of_joining || '',
+        employee.emp_status || employee.status || ''
       ])
     ].map(row => row.join(',')).join('\n');
     
@@ -274,9 +436,9 @@ const ManageEmployee = () => {
     },
     {
       title: 'First Name',
-      dataIndex: 'first_name',
-      key: 'first_name',
-      sorter: (a, b) => (a.first_name || '').localeCompare(b.first_name || ''),
+      dataIndex: 'emp_first_name',
+      key: 'emp_first_name',
+      sorter: (a, b) => (a.emp_first_name || a.first_name || '').localeCompare(b.emp_first_name || b.first_name || ''),
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }}>
           <Input
@@ -303,13 +465,13 @@ const ManageEmployee = () => {
         </div>
       ),
       onFilter: (value, record) =>
-        record.first_name?.toLowerCase().includes(value.toLowerCase()),
+        (record.emp_first_name || record.first_name)?.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: 'Last Name',
-      dataIndex: 'last_name',
-      key: 'last_name',
-      sorter: (a, b) => (a.last_name || '').localeCompare(b.last_name || ''),
+      dataIndex: 'emp_last_name',
+      key: 'emp_last_name',
+      sorter: (a, b) => (a.emp_last_name || a.last_name || '').localeCompare(b.emp_last_name || b.last_name || ''),
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }}>
           <Input
@@ -336,13 +498,13 @@ const ManageEmployee = () => {
         </div>
       ),
       onFilter: (value, record) =>
-        record.last_name?.toLowerCase().includes(value.toLowerCase()),
+        (record.emp_last_name || record.last_name)?.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-      sorter: (a, b) => (a.email || '').localeCompare(b.email || ''),
+      dataIndex: 'emp_email',
+      key: 'emp_email',
+      sorter: (a, b) => (a.emp_email || a.email || '').localeCompare(b.emp_email || b.email || ''),
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }}>
           <Input
@@ -369,12 +531,12 @@ const ManageEmployee = () => {
         </div>
       ),
       onFilter: (value, record) =>
-        record.email?.toLowerCase().includes(value.toLowerCase()),
+        (record.emp_email || record.email)?.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: 'Phone',
-      dataIndex: 'phone',
-      key: 'phone',
+      dataIndex: 'emp_phone',
+      key: 'emp_phone',
         filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
           <div style={{ padding: 8 }}>
             <Input
@@ -401,13 +563,13 @@ const ManageEmployee = () => {
           </div>
         ),
       onFilter: (value, record) =>
-        record.phone?.toLowerCase().includes(value.toLowerCase()),
+        (record.emp_phone || record.phone)?.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: 'Department',
-      dataIndex: 'department',
-      key: 'department',
-      sorter: (a, b) => (a.department || '').localeCompare(b.department || ''),
+      dataIndex: 'emp_department',
+      key: 'emp_department',
+      sorter: (a, b) => (a.emp_department || a.department || '').localeCompare(b.emp_department || b.department || ''),
         filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
           <div style={{ padding: 8 }}>
             <Input
@@ -434,13 +596,13 @@ const ManageEmployee = () => {
           </div>
         ),
       onFilter: (value, record) =>
-        record.department?.toLowerCase().includes(value.toLowerCase()),
+        (record.emp_department || record.department)?.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: 'Reported To',
-      dataIndex: 'reported_to',
-      key: 'reported_to',
-      sorter: (a, b) => (a.reported_to || '').localeCompare(b.reported_to || ''),
+      dataIndex: 'emp_reported_to',
+      key: 'emp_reported_to',
+      sorter: (a, b) => (a.emp_reported_to || a.reported_to || '').localeCompare(b.emp_reported_to || b.reported_to || ''),
         filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
           <div style={{ padding: 8 }}>
             <Input
@@ -467,13 +629,13 @@ const ManageEmployee = () => {
           </div>
         ),
       onFilter: (value, record) =>
-        record.reported_to?.toLowerCase().includes(value.toLowerCase()),
+        (record.emp_reported_to || record.reported_to)?.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: 'Role',
-      dataIndex: 'role',
-      key: 'role',
-      sorter: (a, b) => (a.role || '').localeCompare(b.role || ''),
+      dataIndex: 'emp_role',
+      key: 'emp_role',
+      sorter: (a, b) => (a.emp_role || a.role || '').localeCompare(b.emp_role || b.role || ''),
         filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
           <div style={{ padding: 8 }}>
             <Input
@@ -500,30 +662,48 @@ const ManageEmployee = () => {
           </div>
         ),
       onFilter: (value, record) =>
-        record.role?.toLowerCase().includes(value.toLowerCase()),
+        (record.emp_role || record.role)?.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: 'Date of Joining',
-      dataIndex: 'date_of_joining',
-      key: 'date_of_joining',
-      sorter: (a, b) => new Date(a.date_of_joining || 0) - new Date(b.date_of_joining || 0),
-      render: (value) => value ? dayjs(value).format('DD/MM/YYYY') : '-',
+      dataIndex: 'emp_date_of_joining',
+      key: 'emp_date_of_joining',
+      sorter: (a, b) => new Date(a.emp_date_of_joining || a.date_of_joining || 0) - new Date(b.emp_date_of_joining || b.date_of_joining || 0),
+      render: (value, record) => {
+        const dateValue = value || record.emp_date_of_joining || record.date_of_joining;
+        return dateValue ? dayjs(dateValue).format('DD/MM/YYYY') : '-';
+      },
     },
     {
       title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => (
-        <span className={`badge ${status === 'Active' ? 'bg-success' : 'bg-danger'}`}>
-          {status}
-        </span>
-      ),
-      sorter: (a, b) => (a.status || '').localeCompare(b.status || ''),
+      dataIndex: 'emp_status',
+      key: 'emp_status',
+      render: (status, record) => {
+        const statusValue = status || record.emp_status || record.status;
+        return (
+          <span className={`badge ${statusValue === 'Active' ? 'bg-success' : 'bg-danger'}`}>
+            {statusValue}
+          </span>
+        );
+      },
+      sorter: (a, b) => (a.emp_status || a.status || '').localeCompare(b.emp_status || b.status || ''),
       filters: [
         { text: 'Active', value: 'Active' },
         { text: 'Inactive', value: 'Inactive' },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value, record) => (record.emp_status || record.status) === value,
+    },
+    {
+      title: 'District',
+      dataIndex: 'district',
+      key: 'district',
+      sorter: (a, b) => (a.district || '').localeCompare(b.district || ''),
+    },
+    {
+      title: 'State',
+      dataIndex: 'state',
+      key: 'state',
+      sorter: (a, b) => (a.state || '').localeCompare(b.state || ''),
     },
     {
       title: 'Actions',
@@ -586,8 +766,7 @@ const ManageEmployee = () => {
       </div>
 
       {/* Table */}
-      <div className="card custom-shadow">
-        <div className="card-body">
+      
       <Table
             columns={columns}
             dataSource={filteredEmployees}
@@ -600,8 +779,7 @@ const ManageEmployee = () => {
             }}
             scroll={{ x: 1000 }}
           />
-        </div>
-      </div>
+     
 
       {/* Drawer for Add/Edit Employee */}
       <Drawer
@@ -689,11 +867,74 @@ const ManageEmployee = () => {
           <div className="row">
             <div className="col-md-6">
           <Form.Item
+                name="state"
+                label="State"
+                rules={[{ required: true, message: 'Please select state' }]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Select state"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  style={{ width: '100%' }}
+                >
+                  {states.map((state) => (
+                    <Select.Option key={state.state_id || state.id} value={state.state_name || state.name || state.state}>
+                      {state.state_name || state.name || state.state}
+                    </Select.Option>
+                  ))}
+                </Select>
+          </Form.Item>
+            </div>
+            <div className="col-md-6">
+          <Form.Item
+                name="district"
+                label="District"
+                rules={[{ required: true, message: 'Please select district' }]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Select district"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  style={{ width: '100%' }}
+                >
+                  {districts.map((district) => (
+                    <Select.Option key={district.district_id || district.id} value={district.district_name || district.name || district.district}>
+                      {district.district_name || district.name || district.district}
+                    </Select.Option>
+                  ))}
+                </Select>
+          </Form.Item>
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-md-6">
+          <Form.Item
                 name="role"
                 label="Role"
-                rules={[{ required: true, message: 'Please enter role' }]}
+                rules={[{ required: true, message: 'Please select a role' }]}
               >
-                <Input placeholder="Enter role" />
+                <Select
+                  showSearch
+                  placeholder="Select a role"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  style={{ width: '100%' }}
+                >
+                  {roles.map((role) => (
+                    <Select.Option key={role.role_id || role.id} value={role.role_name || role.name || role.role}>
+                      {role.role_name || role.name || role.role}
+                    </Select.Option>
+                  ))}
+                </Select>
           </Form.Item>
             </div>
             <div className="col-md-6">

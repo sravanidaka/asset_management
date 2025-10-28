@@ -511,11 +511,8 @@ export default function ServiceTypes({ onNavigate }) {
       </div>
 
       {/* 🔹 Table */}
-      <div className="card custom-shadow mb-3">
-        <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fs-4 mb-0">Service Types</h5>
-          </div>
+      
+          
           <Table
             columns={columns}
             dataSource={dataSource}
@@ -531,8 +528,7 @@ export default function ServiceTypes({ onNavigate }) {
             bordered
             size="middle"
           />
-        </div>
-      </div>
+       
 
       {/* 🔹 Drawer Form */}
       <Drawer

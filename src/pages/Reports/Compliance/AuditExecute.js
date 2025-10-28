@@ -314,7 +314,7 @@ const AuditExecute = ({ setActiveScreen }) => {
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Button 
+          {/* <Button 
             type="default" 
             size="small" 
             icon={<FaEye />}
@@ -323,7 +323,7 @@ const AuditExecute = ({ setActiveScreen }) => {
               e.stopPropagation();
               console.log('View clicked for record:', record);
             }}
-          />
+          /> */}
           <Button 
             type="default" 
             size="small" 

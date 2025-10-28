@@ -587,8 +587,7 @@ const ManageCompany = () => {
       {/* Filters */}
      
       {/* Table */}
-      <div className="card custom-shadow">
-        <div className="card-body">
+      
           <Table
             columns={columns}
             dataSource={filteredCompanies}
@@ -601,8 +600,7 @@ const ManageCompany = () => {
             }}
             scroll={{ x: 1000 }}
           />
-        </div>
-      </div>
+      
 
       {/* Drawer for Add/Edit Company */}
       <Drawer

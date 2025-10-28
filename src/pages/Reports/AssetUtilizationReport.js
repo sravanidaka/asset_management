@@ -690,14 +690,14 @@ const AssetUtilizationReport = () => {
             key: 'actions',
             render: (_, record) => (
                 <Space>
-                    <Button
+                    {/* <Button
                         ghost
                         icon={<FaEye />}
                         onClick={(e) => {
                             e.stopPropagation();
                             console.log('View', record);
                         }}
-                    />
+                    /> */}
                     <Button
                         ghost
                         icon={<FaEdit />}

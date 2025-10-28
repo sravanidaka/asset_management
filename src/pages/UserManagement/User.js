@@ -25,7 +25,6 @@ import { safeStringCompare } from '../../utils/tableUtils';
 const { Option } = Select;
 
 const User = () => {
-  const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -41,29 +40,73 @@ const User = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await api.getUsers();
+      // Try the API with different query parameters to get phone data
+      const baseUrl = 'http://202.53.92.35:5004/api/users';
+      const queryParams = [
+        '',  // Original endpoint
+        '?include=phone',
+        '?fields=id,name,email,phone,roles,status',
+        '?include_phone=true',
+        '?with_phone=true'
+      ];
       
-      console.log('Full API Response:', res.data);
-      console.log('Response keys:', Object.keys(res.data || {}));
+      let response;
+      let lastError;
+      
+      // Try each query parameter until one works
+      for (const param of queryParams) {
+        try {
+          const url = baseUrl + param;
+          console.log(`Trying URL: ${url}`);
+          response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache',
+              "x-access-token": sessionStorage.getItem("token"),
+            }
+          });
+          
+          if (response.ok) {
+            console.log(`Successfully connected to: ${url}`);
+            break;
+          }
+        } catch (error) {
+          console.log(`Failed to connect to ${baseUrl + param}:`, error.message);
+          lastError = error;
+        }
+      }
+      
+      if (!response || !response.ok) {
+        throw lastError || new Error('All endpoints failed');
+      }
+      
+      console.log('Users API Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Users API Response:', result);
       
       let usersData = [];
-      
-      // Handle different API response formats
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        usersData = res.data.data;
-        console.log('Using res.data.data format');
-      } else if (res.data?.success && Array.isArray(res.data.users)) {
-        usersData = res.data.users;
-        console.log('Using res.data.users format');
-      } else if (Array.isArray(res.data)) {
-        usersData = res.data;
-        console.log('Using direct array format');
-      } else if (res.data?.users && Array.isArray(res.data.users)) {
-        usersData = res.data.users;
-        console.log('Using res.data.users format');
+      if (Array.isArray(result)) {
+        usersData = result;
+        console.log("Using direct array from API");
+      } else if (result.data && Array.isArray(result.data)) {
+        usersData = result.data;
+        console.log("Using result.data");
+      } else if (result.users && Array.isArray(result.users)) {
+        usersData = result.users;
+        console.log("Using result.users");
+      } else if (result.success && Array.isArray(result.data)) {
+        usersData = result.data;
+        console.log("Using result.success.data");
       } else {
-        console.error("Unexpected API response format:", res.data);
-        message.error("No users data received from server");
+        console.error("Unexpected API response structure:", result);
+        message.error("Unexpected users data format from server");
         setUsers([]);
         return;
       }
@@ -72,6 +115,17 @@ const User = () => {
       if (usersData.length > 0) {
         console.log('First user object:', usersData[0]);
         console.log('First user keys:', Object.keys(usersData[0] || {}));
+        console.log('All field values in first user:', usersData[0]);
+        console.log('Phone field specifically:', usersData[0].phone);
+        console.log('Type of phone field:', typeof usersData[0].phone);
+        console.log('Is phone field empty?', usersData[0].phone === '' || usersData[0].phone === null || usersData[0].phone === undefined);
+        
+        // Check if any user has phone data
+        const usersWithPhone = usersData.filter(user => user.phone && user.phone !== '');
+        console.log(`Users with phone data: ${usersWithPhone.length} out of ${usersData.length}`);
+        if (usersWithPhone.length > 0) {
+          console.log('Sample user with phone:', usersWithPhone[0]);
+        }
       }
       
       // Handle empty API response
@@ -83,28 +137,50 @@ const User = () => {
       
       // Transform data to match table column expectations
       const dataWithKeys = usersData.map((item, index) => {
+        console.log('Processing item:', item);
+        console.log('Available fields:', Object.keys(item));
+        
+        console.log('Processing user item:', item);
+        console.log('Available fields:', Object.keys(item));
+        
+        // Check if phone field exists in any form
+        const phoneValue = item.phone || item.phone_number || item.mobile || item.contact || item.contact_number || item.telephone || item.phone_no || '';
+        console.log('Phone value found:', phoneValue);
+        
         const transformedItem = {
-          key: item.id || index.toString(),
+          key: item.id || item.user_id || index.toString(),
           id: item.id || item.user_id,
-          name: item.name || item.username || item.user_name,
-          email: item.email || item.email_address,
-          phone: item.phone || item.phone_number || item.mobile,
-          role_name: item.role_name || item.role || item.role_title,
-          status: item.status || item.user_status || item.active_status,
+          name: item.name,
+          email: item.email,
+          phone: phoneValue,
+          role_name: item.roles,
+          role_id: item.role_id,
+          status: item.status,
           // Keep original data for reference
           ...item
         };
         
         console.log('Transformed item:', transformedItem);
+        console.log('Transformed phone value:', transformedItem.phone);
+        console.log('Transformed phone type:', typeof transformedItem.phone);
+        console.log('Role field value:', transformedItem.role_name);
         return transformedItem;
       });
       
       console.log('Final processed data:', dataWithKeys);
+      
+      // Check if any user has phone data
+      const hasPhoneData = dataWithKeys.some(user => user.phone && user.phone !== '');
+      if (!hasPhoneData) {
+        console.warn('No phone data found in API response. Available fields:', dataWithKeys.length > 0 ? Object.keys(dataWithKeys[0]) : 'No data');
+        message.warning('Phone data is not available in the current API response. Please check if the API includes phone field.');
+      }
+      
       setUsers(dataWithKeys);
     } catch (error) {
       console.error("Error fetching users:", error);
-      console.error("Error details:", error.response?.data);
-      message.error("Failed to fetch users");
+      console.error("Error details:", error.message);
+      message.error(`Failed to fetch users: ${error.message}`);
       setUsers([]);
     } finally {
       setLoading(false);
@@ -114,18 +190,42 @@ const User = () => {
   // Fetch Roles
   const fetchRoles = async () => {
     try {
-      const res = await api.getRoles();
+      const response = await fetch('http://202.53.92.35:5004/api/roles/getRolesList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          "x-access-token": sessionStorage.getItem("token"),
+        }
+      });
+      
+      console.log('Roles API Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Roles API Response:', result);
       
       let rolesData = [];
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        // API returns {success: true, data: [...]}
-        rolesData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        // API returns array directly
-        rolesData = res.data;
+      if (Array.isArray(result)) {
+        rolesData = result;
+        console.log("Using direct array from roles API");
+      } else if (result.data && Array.isArray(result.data)) {
+        rolesData = result.data;
+        console.log("Using result.data from roles API");
+      } else if (result.roles && Array.isArray(result.roles)) {
+        rolesData = result.roles;
+        console.log("Using result.roles from roles API");
+      } else if (result.success && Array.isArray(result.data)) {
+        rolesData = result.data;
+        console.log("Using result.success.data from roles API");
       } else {
-        console.error("Unexpected roles API response format:", res.data);
-        message.error("No roles data received from server");
+        console.error("Unexpected roles API response structure:", result);
+        message.error("Unexpected roles data format from server");
+        setRoles([]);
         return;
       }
       
@@ -141,10 +241,11 @@ const User = () => {
       
       if (rolesData.length > 0) {
         console.log(`Roles loaded successfully (${rolesData.length} items)`);
+        console.log('First role object:', rolesData[0]);
       }
     } catch (error) {
       console.error("Error fetching roles:", error);
-      message.error("Failed to fetch roles");
+      message.error(`Failed to fetch roles: ${error.message}`);
       setRoles([]);
     }
   };
@@ -155,12 +256,6 @@ const User = () => {
   }, []);
 
 
-  // Filter data based on search
-  const filteredUsers = users.filter((user) =>
-    Object.values(user).some((value) =>
-      value?.toString().toLowerCase().includes(search.toLowerCase())
-    )
-  );
 
   // Column search props
   const getColumnSearchProps = (dataIndex) => ({
@@ -241,6 +336,13 @@ const User = () => {
       key: "phone",
       sorter: (a, b) => safeStringCompare(a.phone, b.phone),
       ...getColumnSearchProps('phone'),
+      render: (phone) => {
+        console.log('Rendering phone in table:', phone, 'Type:', typeof phone);
+        if (!phone || phone === '') {
+          return <span style={{ color: '#999', fontStyle: 'italic' }}>Not Available</span>;
+        }
+        return phone;
+      },
     },
     {
       title: "Role",
@@ -317,12 +419,25 @@ const User = () => {
   const showDrawer = (user = null) => {
     setEditingUser(user);
     if (user) {
+      // Find the role_id that matches the role_name
+      const matchingRole = roles.find(role => role.role_name === user.role_name);
+      
       form.setFieldsValue({
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role_id: user.role_id,
+        role_id: matchingRole ? matchingRole.role_id : user.role_id,
         status: user.status,
+      });
+      
+      console.log('Form values set:', {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role_id: matchingRole ? matchingRole.role_id : user.role_id,
+        status: user.status,
+        user_role_name: user.role_name,
+        matching_role: matchingRole
       });
     } else {
       form.resetFields();
@@ -339,6 +454,10 @@ const User = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
+      // Find the role name for the selected role_id
+      const selectedRole = roles.find(role => role.role_id === values.role_id);
+      const roleName = selectedRole ? selectedRole.role_name : values.role_id;
+      
       if (editingUser) {
         // For updates, send all fields
         const updateData = {
@@ -346,7 +465,7 @@ const User = () => {
           name: values.name,
           email: values.email,
           phone: values.phone,
-          role_id: values.role_id,
+          roles: roleName, // Use 'roles' field as per your payload structure
           status: values.status,
         };
         
@@ -355,12 +474,24 @@ const User = () => {
           updateData.password = values.password;
         }
         
-        const response = await api.updateUser(updateData);
+        console.log('Update data being sent:', updateData);
         
-        if (response.data?.success) {
+        const response = await fetch('http://202.53.92.35:5004/api/users', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            "x-access-token": sessionStorage.getItem("token"),
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        const result = await response.json();
+        console.log('Update response:', result);
+        
+        if (result.success || result.id) {
           message.success("User updated successfully");
         } else {
-          throw new Error(response.data?.message || "Failed to update user");
+          throw new Error(result.message || "Failed to update user");
         }
       } else {
         // For new users, send all required fields
@@ -369,16 +500,28 @@ const User = () => {
           email: values.email,
           phone: values.phone,
           password: values.password,
-          role_id: values.role_id,
+          roles: roleName, // Use 'roles' field as per your payload structure
           status: values.status,
         };
         
-        const response = await api.createUser(createData);
+        console.log('Create data being sent:', createData);
         
-        if (response.data?.success) {
+        const response = await fetch('http://202.53.92.35:5004/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            "x-access-token": sessionStorage.getItem("token"),
+          },
+          body: JSON.stringify(createData)
+        });
+        
+        const result = await response.json();
+        console.log('Create response:', result);
+        
+        if (result.success || result.id) {
           message.success("User added successfully");
         } else {
-          throw new Error(response.data?.message || "Failed to create user");
+          throw new Error(result.message || "Failed to create user");
         }
       }
       fetchUsers();
@@ -406,20 +549,6 @@ const User = () => {
             <p className="mt-0">Control access to asset screens and actions.</p>
           </div>
           <div className="d-flex align-items-center gap-2">
-            <Input
-              placeholder="Search users..."
-              prefix={<SearchOutlined />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: 250 }}
-              allowClear
-            />
-            <Button
-              onClick={fetchUsers}
-              loading={loading}
-            >
-              Refresh
-            </Button>
             <ExportButton
               data={users}
               columns={columns}
@@ -429,6 +558,7 @@ const User = () => {
               filters={{}}
               sorter={{}}
               message={message}
+              includeAllFields={true}
             />
             <Button
               type="primary"
@@ -440,13 +570,10 @@ const User = () => {
           </div>
         </div>
 
-        <div className="card af-card mt-2">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="card-title mb-0">User List</h5>
-          </div>
+   
         <Table
           columns={columns}
-          dataSource={filteredUsers}
+          dataSource={users}
           loading={loading}
           pagination={{
             current: pagination.current,
@@ -459,7 +586,7 @@ const User = () => {
           bordered
           size="middle"
         />
-      </div>
+      
     
 
       {/* Drawer Form */}

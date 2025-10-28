@@ -173,32 +173,12 @@ export const getNextUniqueNumber = (assetType, department, year) => {
  * @returns {string} Generated asset ID
  */
 export const autoGenerateAssetId = (formData) => {
-  const {
-    location = 'Default',
-    department = 'Default',
-    category = 'Default',
-    purchase_date
-  } = formData;
-
-  // Extract year from purchase date
-  let purchaseYear = new Date().getFullYear();
-  if (purchase_date) {
-    const date = new Date(purchase_date);
-    if (!isNaN(date.getTime())) {
-      purchaseYear = date.getFullYear();
-    }
-  }
-
-  // Get next unique number
-  const uniqueNumber = getNextUniqueNumber(category, department, purchaseYear);
-
-  return generateAssetId({
-    location,
-    department,
-    assetType: category,
-    purchaseYear,
-    uniqueNumber
-  });
+  // Generate a simple numeric ID with timestamp
+  const timestamp = Date.now();
+  const randomSuffix = Math.floor(Math.random() * 1000);
+  
+  // Format: ASSET-{timestamp}-{random}
+  return `ASSET-${timestamp}-${randomSuffix}`;
 };
 
 /**

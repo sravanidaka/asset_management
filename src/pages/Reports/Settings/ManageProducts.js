@@ -600,8 +600,7 @@ const ManageProducts = () => {
       
 
       {/* Table */}
-      <div className="card custom-shadow">
-        <div className="card-body">
+     
           <Table
             columns={columns}
             dataSource={filteredProducts}
@@ -614,8 +613,7 @@ const ManageProducts = () => {
             }}
             scroll={{ x: 1000 }}
           />
-        </div>
-      </div>
+       
 
       {/* Drawer for Add/Edit Product */}
       <Drawer

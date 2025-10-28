@@ -51,6 +51,8 @@ const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar, s
       'transfer': 'Transfer',
       'financial': 'Financial',
       'disposal': 'Disposal',
+      'asset-history': 'Asset History',
+      'asset-history-detail': 'Asset History Detail',
       'ManageVendor': 'Manage Vendor',
       'requests': 'Requests',
       'service-log': 'Service Log',
@@ -62,7 +64,8 @@ const Header = ({ handleLogout, user = { name: "John Doe", }, onToggleSidebar, s
       'disposalreport': 'Disposal Report',
       'settings': 'Settings',
       'user': 'User',
-      'roles': 'Roles'
+      'roles': 'Roles',
+      'module': 'Module'
     };
 
     pathSegments.forEach((segment, index) => {

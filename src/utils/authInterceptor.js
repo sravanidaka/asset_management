@@ -31,6 +31,24 @@ class AuthInterceptor {
     return !!(token && isAuth);
   }
 
+  // Check if token is expired
+  isTokenExpired(token) {
+    if (!token) return true;
+    
+    try {
+      // Decode JWT token to check expiration
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // Check if token is expired (with 5 minute buffer)
+      const bufferTime = 5 * 60; // 5 minutes in seconds
+      return payload.exp < (currentTime + bufferTime);
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      return true; // If we can't parse the token, consider it expired
+    }
+  }
+
   // Check if endpoint should be excluded from token requirement
   isExcludedEndpoint(endpoint) {
     // If endpoint is a full URL, extract the path
@@ -57,7 +75,8 @@ class AuthInterceptor {
     sessionStorage.removeItem('isAuthenticated');
     sessionStorage.removeItem('user');
     
-    // Redirect to login
+    // Redirect to login using window.location as fallback
+    // This is used by the interceptor when no navigate function is available
     window.location.href = '/login';
   }
 
@@ -77,6 +96,13 @@ class AuthInterceptor {
       
       if (!token) {
         console.warn('❌ No token found for authenticated endpoint:', url);
+        this.handleAuthError();
+        return null;
+      }
+
+      // Check if token is expired
+      if (this.isTokenExpired(token)) {
+        console.warn('❌ Token is expired for endpoint:', url);
         this.handleAuthError();
         return null;
       }

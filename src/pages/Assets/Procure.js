@@ -20,7 +20,7 @@ import {
   Upload
 } from "antd";
 import { FaEdit, FaTrash, FaArrowLeft, FaUpload } from "react-icons/fa";
-import { PlusOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
+import { PlusOutlined, SearchOutlined, UploadOutlined, DownloadOutlined, InboxOutlined, FileTextOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudUploadOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { formatDateForAPI, parseDateFromDB } from "../../utils/dateUtils";
 import { safeStringCompare } from '../../utils/tableUtils';
@@ -29,7 +29,9 @@ import {
   CategoriesDropdown,
   LocationsDropdown,
   VendorNamesDropdown,
-  AssetIdsDropdown
+  AssetIdsDropdownNew,
+  RequestedByDropdown,
+  AssetNamesDropdown
 } from '../../components/SettingsDropdown';
 
 const { Option } = Select;
@@ -39,6 +41,7 @@ const Procure = () => {
   const [loading, setLoading] = useState(false);
   const [editingProcurement, setEditingProcurement] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [requestedByOptions, setRequestedByOptions] = useState([]);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -48,6 +51,77 @@ const Procure = () => {
   const [filteredInfo, setFilteredInfo] = useState({});
   const [sortedInfo, setSortedInfo] = useState({});
   const [bulkUploadVisible, setBulkUploadVisible] = useState(false);
+  const [bulkUploadDrawerVisible, setBulkUploadDrawerVisible] = useState(false);
+
+  // Fetch requested-by options from API
+  const fetchRequestedByOptions = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://202.53.92.35:5004/api/assets/dropdown/requested-by', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': token || ''
+        }
+      });
+      
+      console.log("Requested-by API Response Status:", response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Requested-by API Response Data:", result);
+        
+        let requestedByData = [];
+        
+        // Handle different response formats
+        if (result.success && Array.isArray(result.data)) {
+          requestedByData = result.data;
+        } else if (Array.isArray(result.data)) {
+          requestedByData = result.data;
+        } else if (result.data?.requestedBy && Array.isArray(result.data.requestedBy)) {
+          requestedByData = result.data.requestedBy;
+        } else if (Array.isArray(result)) {
+          requestedByData = result;
+        } else {
+          console.warn("Unexpected requested-by API response format:", result);
+          // Fallback to default options
+          requestedByData = [
+            { name: "John Doe", id: "john_doe" },
+            { name: "Jane Smith", id: "jane_smith" },
+            { name: "Mike Johnson", id: "mike_johnson" },
+            { name: "Sarah Wilson", id: "sarah_wilson" },
+            { name: "David Brown", id: "david_brown" }
+          ];
+        }
+        
+        setRequestedByOptions(requestedByData);
+        console.log("Requested-by options loaded successfully:", requestedByData.length, "items");
+        
+      } else {
+        console.warn("Requested-by API failed with status:", response.status);
+        // Fallback to default options
+        const defaultOptions = [
+          { name: "John Doe", id: "john_doe" },
+          { name: "Jane Smith", id: "jane_smith" },
+          { name: "Mike Johnson", id: "mike_johnson" },
+          { name: "Sarah Wilson", id: "sarah_wilson" },
+          { name: "David Brown", id: "david_brown" }
+        ];
+        setRequestedByOptions(defaultOptions);
+      }
+    } catch (error) {
+      console.error("Error fetching requested-by options:", error);
+      // Fallback to default options
+      const defaultOptions = [
+        { name: "John Doe", id: "john_doe" },
+        { name: "Jane Smith", id: "jane_smith" },
+        { name: "Mike Johnson", id: "mike_johnson" },
+        { name: "Sarah Wilson", id: "sarah_wilson" },
+        { name: "David Brown", id: "david_brown" }
+      ];
+      setRequestedByOptions(defaultOptions);
+    }
+  };
 
   // Fetch categories from API
   const fetchCategories = async () => {
@@ -205,6 +279,7 @@ const Procure = () => {
 
   useEffect(() => {
     fetchCategories();
+    fetchRequestedByOptions();
     fetchProcurements();
   }, []);
 
@@ -705,7 +780,7 @@ const Procure = () => {
       if (error.response?.status === 400) {
         const errorMessage = error.response?.data?.message || error.response?.data?.error || "Bad Request - Invalid data format";
         console.error("400 Bad Request details:", error.response?.data);
-        console.error("Request data that caused 400:", editingProcurement ? updateData : createData);
+        // console.error("Request data that caused 400:", editingProcurement ? updateData : createData);
         message.error(`❌ Invalid data: ${errorMessage}`);
       } else if (error.response?.status === 500) {
         console.error("500 Internal Server Error details:", error.response?.data);
@@ -733,32 +808,55 @@ const Procure = () => {
 
   // Bulk upload functionality
   const handleBulkUpload = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
+    // Validate file type
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv', // .csv
+      'application/csv' // .csv alternative
+    ];
+    
+    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      message.error('❌ Only Excel (.xlsx, .xls) and CSV files are allowed');
+      return false;
+    }
     
     try {
       setLoading(true);
       message.loading("Uploading file...", 0);
       
-      const response = await axios.post(
-        "http://202.53.92.35:5004/api/assets/procure/bulk-upload",
-        formData,
-        {
-          headers: {
-            "x-access-token": sessionStorage.getItem("token"),
-            "Content-Type": "multipart/form-data",
-          }
-        }
-      );
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
       
+      const response = await fetch("http://202.53.92.35:5004/api/assets/procure/bulk-upload", {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+          "x-access-token": sessionStorage.getItem("token"),
+        },
+        body: JSON.stringify({
+          excelFile: base64,
+          fileName: file.name
+        })
+      });
+      
+      const result = await response.json();
       message.destroy();
       
-      if (response.data.success) {
-        message.success(`✅ Bulk upload successful! ${response.data.imported || 0} records imported.`);
+      if (result.success) {
+        message.success(`✅ Bulk upload successful! ${result.imported || 0} records imported.`);
         await fetchProcurements(); // Refresh the table
-        setBulkUploadVisible(false);
+        setBulkUploadDrawerVisible(false);
       } else {
-        message.error(`❌ Upload failed: ${response.data.message || 'Unknown error'}`);
+        message.error(`❌ Upload failed: ${result.message || 'Unknown error'}`);
       }
     } catch (error) {
       message.destroy();
@@ -785,6 +883,60 @@ const Procure = () => {
     showUploadList: false,
   };
 
+  // CSV headers for procurement template
+  const csvHeaders = [
+    'S.No',
+    'Indent Number',
+    'Requested By',
+    'Requested Date',
+    'Category',
+    'Asset ID',
+    'Asset Name',
+    'Quantity',
+    'PO Number',
+    'Supplier/Vendor',
+    'Received Date',
+    'Invoice Details',
+    'Justification',
+    'Status'
+  ];
+
+  // Download sample Excel template
+  const downloadSampleExcel = () => {
+    // Define field names only (no sample data)
+    const fieldNames = [
+      'Indent Number',
+      'Requested By',
+      'Requested Date',
+      'Category',
+      'Asset ID',
+      'Asset Name',
+      'Quantity',
+      'PO Number',
+      'Supplier/Vendor',
+      'Received Date',
+      'Invoice Details',
+      'Justification',
+      'Status'
+    ];
+
+    // Create CSV content with headers only
+    const csvContent = fieldNames.join(',') + '\n';
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'procurement_bulk_upload_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    message.success('✅ Excel template downloaded!');
+  };
+
   return (
     <div className="container-fluid p-1 position-relative" style={{ minHeight: "100vh" }}>
       {/* Top Navigation Bar */}
@@ -803,14 +955,16 @@ const Procure = () => {
           <span className="text-muted">The core screen for managing asset procurement requests and indent processing.</span>
         </div>
         <div className="d-flex gap-2">
-          <Upload {...uploadProps}>
-            <button className="btn btn-warning px-4">
-              <FaUpload /> Bulk Upload
-            </button>
-          </Upload>
+          <Button
+            type="default"
+            icon={<FaUpload />}
+            onClick={() => setBulkUploadDrawerVisible(true)}
+          >
+            Bulk Upload
+          </Button>
           <ExportButton
             data={dataSource}
-            columns={columns}
+            columns={null}
             filename="Procurement_Management_Report"
             title="Procurement Management Report"
             reportType="procurement-management"
@@ -864,9 +1018,13 @@ const Procure = () => {
               <Form.Item
                 name="requested_by"
                 label="Requested By"
-                rules={[{ required: true, message: "Please enter requester name" }]}
+                rules={[{ required: true, message: "Please select requester" }]}
               >
-                <Input placeholder="Enter requester name" />
+                <RequestedByDropdown 
+                  placeholder="Select requester"
+                  showSearch={true}
+                  allowClear={true}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -900,7 +1058,7 @@ const Procure = () => {
                 label="Asset ID"
                 rules={[{ required: true, message: "Please select asset ID" }]}
               >
-                <AssetIdsDropdown 
+                <AssetIdsDropdownNew 
                   placeholder="Select asset ID"
                   showSearch={true}
                   allowClear={true}
@@ -914,9 +1072,13 @@ const Procure = () => {
               <Form.Item
                 name="asset_name"
                 label="Asset Name"
-                rules={[{ required: true, message: "Please enter asset name" }]}
+                rules={[{ required: true, message: "Please select asset name" }]}
               >
-                <Input placeholder="Enter asset name" />
+                <AssetNamesDropdown 
+                  placeholder="Select asset name"
+                  showSearch={true}
+                  allowClear={true}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -1019,6 +1181,97 @@ const Procure = () => {
             </Space>
           </Form.Item>
         </Form>
+      </Drawer>
+
+      {/* Bulk Upload Drawer */}
+      <Drawer
+        title="Bulk Upload Procurement"
+        width={600}
+        onClose={() => setBulkUploadDrawerVisible(false)}
+        open={bulkUploadDrawerVisible}
+        styles={{ body: { paddingBottom: 80 } }}
+        extra={
+          <Space>
+            <Button onClick={() => setBulkUploadDrawerVisible(false)}>
+              Cancel
+            </Button>
+          </Space>
+        }
+      >
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileTextOutlined /> Important Fields Instructions
+          </h4>
+          <div style={{ 
+            background: '#f6ffed', 
+            border: '1px solid #b7eb8f', 
+            borderRadius: '6px', 
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <h5 style={{ color: '#52c41a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircleOutlined /> Required Fields (Must be filled):
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li><strong>Indent Number</strong> - Unique indent number for the procurement request</li>
+              <li><strong>Requested By</strong> - Name of the person requesting the procurement</li>
+              <li><strong>Requested Date</strong> - Date when the request was made (YYYY-MM-DD format)</li>
+              <li><strong>Category</strong> - Asset category (must match existing categories)</li>
+              <li><strong>Asset ID</strong> - Asset identifier (must match existing asset IDs)</li>
+              <li><strong>Asset Name</strong> - Name of the asset to be procured (must match existing asset names)</li>
+              <li><strong>Quantity</strong> - Number of items to be procured</li>
+              <li><strong>PO Number</strong> - Purchase Order number</li>
+              <li><strong>Supplier/Vendor</strong> - Vendor name (must match existing vendors)</li>
+              <li><strong>Justification</strong> - Reason for procurement</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudDownloadOutlined /> Download Sample Template
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Download the sample Excel template to see the correct format and required fields.
+          </p>
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={downloadSampleExcel}
+            style={{ marginBottom: '16px' }}
+          >
+            Download Sample Excel Template
+          </Button>
+        </div>
+
+        <div>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudUploadOutlined /> Upload Your File
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Select your Excel or CSV file to upload. The system will validate the data and import the procurement records.
+          </p>
+          <Upload.Dragger
+            {...uploadProps}
+            style={{ 
+              background: '#fafafa',
+              border: '2px dashed #d9d9d9',
+              borderRadius: '6px'
+            }}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            </p>
+            <p className="ant-upload-text" style={{ fontSize: '16px', fontWeight: '500' }}>
+              Click or drag file to this area to upload
+            </p>
+            <p className="ant-upload-hint" style={{ color: '#666' }}>
+              Support for Excel (.xlsx, .xls) and CSV files. Maximum file size: 10MB.
+              <br />
+              Make sure your file follows the sample template format.
+            </p>
+          </Upload.Dragger>
+        </div>
       </Drawer>
     </div>
   );

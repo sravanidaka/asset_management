@@ -4,6 +4,7 @@ import CustomBreadcrumb from '../../components/Breadcrumb';
 
 import { FaDownload, FaFilter, FaSearch, FaCalendarAlt, FaWrench, FaArrowLeft, FaEdit, FaEye, FaChartLine } from 'react-icons/fa';
 import { Table, Input, Button, Space, Drawer, Form, Select, DatePicker, message, Popconfirm, Dropdown } from 'antd';
+import { DepreciationMethodsDropdown } from '../../components/SettingsDropdown';
 import { SearchOutlined, PlusOutlined, DownOutlined, FilterOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { handleExport, formatDataForExport, getExportOptions, applyFilters, applySorting } from '../../utils/exportUtils';
@@ -873,14 +874,14 @@ const MaintenanceRepairReport = () => {
             key: 'actions',
             render: (_, record) => (
                 <Space>
-                    <Button
+                    {/* <Button
                         ghost
                         icon={<FaEye />}
                         onClick={(e) => {
                             e.stopPropagation();
                             console.log('View', record);
                         }}
-                    />
+                    /> */}
                     <Button
                         ghost
                         icon={<FaEdit />}
@@ -1415,11 +1416,11 @@ const MaintenanceRepairReport = () => {
                                 label="Depreciation Method"
                                 rules={[{ required: true, message: 'Please select Depreciation Method' }]}
                             >
-                                <Select placeholder="Select depreciation method">
-                                    <Select.Option value="Straight Line Method">Straight Line Method</Select.Option>
-                                    <Select.Option value="WDV">WDV</Select.Option>
-                                    <Select.Option value="Custom">Custom</Select.Option>
-                                </Select>
+                                <DepreciationMethodsDropdown 
+                                    placeholder="Select depreciation method"
+                                    showSearch={true}
+                                    allowClear={true}
+                                />
                             </Form.Item>
                             <Form.Item
                                 name="depreciation_rate"

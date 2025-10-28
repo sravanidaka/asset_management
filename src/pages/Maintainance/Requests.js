@@ -456,14 +456,14 @@ const Requests = () => {
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button
+          {/* <Button
             type="link"
             icon={<FaEye />}
             onClick={(e) => {
               e.stopPropagation();
               console.log('View', record);
             }}
-          />
+          /> */}
           <Button
             type="link"
             icon={<FaEdit />}
@@ -531,8 +531,7 @@ const Requests = () => {
       </div>
 
       {/* Ant Design Table */}
-      <div className="card shadow-sm mt-2">
-        <div className="card-body">
+   
           <Table
             columns={columns}
             dataSource={dataSource}
@@ -549,8 +548,7 @@ const Requests = () => {
             scroll={{ x: 1200 }}
             rowKey="key"
           />
-        </div>
-      </div>
+      
 
       {/* Drawer for Form */}
       <Drawer

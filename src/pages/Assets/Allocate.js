@@ -26,7 +26,7 @@ import {
   StatusNamesDropdown,
   CategoriesDropdown,
   LocationsDropdown,
-  AssetIdsDropdown
+  AssetIdsDropdownNew
 } from '../../components/SettingsDropdown';
 
 const { Option } = Select;
@@ -164,6 +164,43 @@ const Allocate = () => {
       setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
+    }
+  };
+
+  // Fetch generated codes for asset IDs (now handled by AssetIdsDropdown component)
+  const fetchGeneratedCodes = async () => {
+    try {
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      const response = await fetch('http://202.53.92.35:5004/api/assets/generated-codes', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': token,
+        }
+      });
+
+      const result = await response.json();
+      console.log('Generated codes API response:', result);
+      
+      // Handle different response structures
+      let data = [];
+      if (Array.isArray(result)) {
+        data = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        data = result.data;
+      } else if (result.codes && Array.isArray(result.codes)) {
+        data = result.codes;
+      } else if (result.result && Array.isArray(result.result)) {
+        data = result.result;
+      } else if (result.items && Array.isArray(result.items)) {
+        data = result.items;
+      }
+      
+      console.log('Generated codes loaded:', data.length, 'items');
+      return data;
+    } catch (error) {
+      console.error('Error fetching generated codes:', error);
+      return [];
     }
   };
 
@@ -579,27 +616,74 @@ const Allocate = () => {
     try {
       setLoading(true);
       
+      // Helper function to get company name from ID
+      const getCompanyName = (companyId) => {
+        const company = companies.find(c => c.company_id === companyId);
+        return company ? company.company_name : null;
+      };
+      
+      // Helper function to get location name from ID
+      const getLocationName = async (locationId) => {
+        if (!locationId) return null;
+        
+        try {
+          // Fetch location data to get the name
+          const response = await fetch('http://202.53.92.35:5004/api/settings/getLocationsDropdown', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-access-token': sessionStorage.getItem("token"),
+            }
+          });
+          
+          const result = await response.json();
+          const location = result.find(loc => 
+            (loc.id || loc.location_id) === locationId || 
+            (loc.value || loc.id) === locationId
+          );
+          
+          return location ? (location.location_name || location.name || location.label) : `Location-${locationId}`;
+        } catch (error) {
+          console.error('Error fetching location name:', error);
+          return `Location-${locationId}`;
+        }
+      };
+      
+      // Helper function to get product name from ID
+      const getProductName = (productId) => {
+        const product = products.find(p => p.product_id === productId);
+        return product ? product.product_name : null;
+      };
+      
       if (editingAllocation) {
         // Update existing allocation
         console.log("Updating allocation:", editingAllocation);
+        
+        // Get location name asynchronously
+        const locationName = await getLocationName(values.location_id);
+        
         const updateData = {
           id: editingAllocation.id,
-          asset_id: parseInt(values.asset_id),
+          asset_id: values.asset_id,
           assignment_date: values.assignment_date || null,
           assignment_type: values.assignment_type,
           transfer: values.transfer || null,
           return_date: values.return_date || null,
           assigned_to: values.assigned_to,
           assigned_by: values.assigned_by,
-          company: values.company_id ? companies.find(c => c.company_id === values.company_id)?.company_name : null,
-          location: values.location_id || null,
-          product: values.product_id ? products.find(p => p.product_id === values.product_id)?.product_name : null,
           assignment_notes: values.assignment_notes,
-          condition_at_issue: values.condition_at_issue
+          condition_at_issue: values.condition_at_issue,
+          // Add the string values for company, location, product
+          company: getCompanyName(values.company_id),
+          location: locationName,
+          product: getProductName(values.product_id)
         };
         
         console.log("Update data being sent:", updateData);
         console.log("Update data types:", Object.keys(updateData).map(key => `${key}: ${typeof updateData[key]}`));
+        console.log("Company mapping:", { company_id: values.company_id, company_name: getCompanyName(values.company_id) });
+        console.log("Location mapping:", { location_id: values.location_id, location_name: locationName });
+        console.log("Product mapping:", { product_id: values.product_id, product_name: getProductName(values.product_id) });
         
         const token = sessionStorage.getItem("token") || '';
         console.log("Using token for update:", token);
@@ -622,23 +706,31 @@ const Allocate = () => {
       } else {
         // Create new allocation
         console.log("Creating new allocation");
+        
+        // Get location name asynchronously
+        const locationName = await getLocationName(values.location_id);
+        
         const createData = {
-          asset_id: parseInt(values.asset_id),
+          asset_id: values.asset_id,
           assignment_date: values.assignment_date || null,
           assignment_type: values.assignment_type,
           transfer: values.transfer || null,
           return_date: values.return_date || null,
           assigned_to: values.assigned_to,
           assigned_by: values.assigned_by,
-          company: values.company_id ? companies.find(c => c.company_id === values.company_id)?.company_name : null,
-          location: values.location_id || null,
-          product: values.product_id ? products.find(p => p.product_id === values.product_id)?.product_name : null,
           assignment_notes: values.assignment_notes,
-          condition_at_issue: values.condition_at_issue
+          condition_at_issue: values.condition_at_issue,
+          // Add the string values for company, location, product
+          company: getCompanyName(values.company_id),
+          location: locationName,
+          product: getProductName(values.product_id)
         };
         
         console.log("Create data being sent:", createData);
         console.log("Create data types:", Object.keys(createData).map(key => `${key}: ${typeof createData[key]}`));
+        console.log("Company mapping:", { company_id: values.company_id, company_name: getCompanyName(values.company_id) });
+        console.log("Location mapping:", { location_id: values.location_id, location_name: locationName });
+        console.log("Product mapping:", { product_id: values.product_id, product_name: getProductName(values.product_id) });
 
 
         const token = sessionStorage.getItem("token") || '';
@@ -729,7 +821,7 @@ const Allocate = () => {
          
           <ExportButton
             data={dataSource}
-            columns={columns}
+            columns={null}
             filename="Allocation_Management_Report"
             title="Allocation Management Report"
             reportType="allocation-management"
@@ -787,7 +879,7 @@ const Allocate = () => {
                   { required: true, message: "Please select asset ID" }
                 ]}
               >
-                <AssetIdsDropdown 
+                <AssetIdsDropdownNew 
                   placeholder="Select asset ID"
                   showSearch={true}
                   allowClear={true}

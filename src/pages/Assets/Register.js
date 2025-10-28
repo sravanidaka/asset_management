@@ -19,15 +19,17 @@ import {
   DatePicker,
   Upload,
   Modal,
+  Spin,
+  Card,
 } from "antd";
-import { SearchOutlined, PlusOutlined, DownloadOutlined, UploadOutlined, InboxOutlined } from "@ant-design/icons";
+import { SearchOutlined, PlusOutlined, DownloadOutlined, UploadOutlined, InboxOutlined, InfoCircleOutlined, CheckCircleOutlined, ExclamationCircleOutlined, FileTextOutlined, CloudDownloadOutlined, CloudUploadOutlined, FileTextOutlined as FileTextIcon, ToolOutlined, EnvironmentOutlined, DollarOutlined, CalendarOutlined, BarChartOutlined, FileOutlined } from "@ant-design/icons";
 import { api } from '../../config/api';
 import { isValidDate, isDateInFuture, isDateInPast, isDateBefore, formatDateForDisplay } from '../../utils/dateUtils';
 import { formatDateForDB, parseDateFromDB } from "../../utils/dateUtils";
 import ExportButton from '../../components/ExportButton';
 import { safeStringCompare } from '../../utils/tableUtils';
 import { autoGenerateAssetId, validateAssetId, generateAssetId } from '../../utils/assetIdUtils';
-import { getCategories, getAssetNames, getAssetIds, getAssetTypes, getVendorNames } from '../../services/settingsService';
+import { getCategories, getLocations, getUserNames, getAssetNames, getAssetIds, getAssetTypes, getVendorNames, getDepreciationMethods } from '../../services/settingsService';
 import { 
   StatusNamesDropdown,
   CategoriesDropdown,
@@ -36,7 +38,9 @@ import {
   LocationNamesDropdown,
   AssetIdsDropdown,
   AssetTypesDropdown,
-  VendorNamesDropdown
+  VendorNamesDropdown,
+  UserNamesDropdown,
+  DepreciationMethodsDropdown
 } from '../../components/SettingsDropdown';
 import dayjs from 'dayjs';
 
@@ -54,20 +58,105 @@ const Register = () => {
   const [filteredInfo, setFilteredInfo] = useState({});
   const [sortedInfo, setSortedInfo] = useState({});
   const [bulkUploadVisible, setBulkUploadVisible] = useState(false);
+  const [bulkUploadDrawerVisible, setBulkUploadDrawerVisible] = useState(false);
   const [form] = Form.useForm();
   const [editingAsset, setEditingAsset] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [users, setUsers] = useState([]);
   const [vendorNames, setVendorNames] = useState([]);
   const [assetNames, setAssetNames] = useState([]);
   const [assetIds, setAssetIds] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
+  const [depreciationMethods, setDepreciationMethods] = useState([]);
   const [fileList, setFileList] = useState({
     invoice_receipt: [],
     ownership_proof: [],
     insurance_policy: [],
     lease_agreements: []
   });
+  const [assetIdStatus, setAssetIdStatus] = useState(null);
+  const [serialNumberStatus, setSerialNumberStatus] = useState(null); // 'available', 'duplicate', 'validating'
+  const [assetDetailsVisible, setAssetDetailsVisible] = useState(false);
+  const [assetDetails, setAssetDetails] = useState(null);
+  const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
+  const [warrantyPeriodCalculated, setWarrantyPeriodCalculated] = useState(false);
+
+  // Helper functions to map IDs to names for display
+  const getCategoryNameById = (categoryId) => {
+    console.log('🔍 getCategoryNameById called with:', categoryId, 'categories:', categories);
+    if (!categoryId || !categories.length) return categoryId;
+    const category = categories.find(cat => cat.id === categoryId || cat.value === categoryId);
+    console.log('🔍 Found category:', category);
+    return category ? category.name || category.label : categoryId;
+  };
+
+  const getLocationNameById = (locationId) => {
+    console.log('🔍 getLocationNameById called with:', locationId, 'locations:', locations);
+    if (!locationId || !locations.length) return locationId;
+    const location = locations.find(loc => loc.id === locationId || loc.value === locationId);
+    console.log('🔍 Found location:', location);
+    return location ? location.name || location.label : locationId;
+  };
+
+  const getUserNameById = (userId) => {
+    console.log('🔍 getUserNameById called with:', userId, 'users:', users);
+    if (!userId || !users.length) return userId;
+    const user = users.find(u => u.id === userId || u.value === userId);
+    console.log('🔍 Found user:', user);
+    return user ? user.name || user.label : userId;
+  };
+
+  // Function to calculate warranty period in months
+  const calculateWarrantyPeriod = (startDate, expiryDate) => {
+    if (!startDate || !expiryDate) return null;
+    
+    try {
+      const start = dayjs(startDate);
+      const expiry = dayjs(expiryDate);
+      
+      if (expiry.isBefore(start)) {
+        return null; // Invalid date range
+      }
+      
+      const months = expiry.diff(start, 'month', true);
+      return Math.round(months);
+    } catch (error) {
+      console.error('Error calculating warranty period:', error);
+      return null;
+    }
+  };
+
+  // Handle warranty start date change
+  const handleWarrantyStartDateChange = (date) => {
+    const warrantyExpiry = form.getFieldValue('warranty_expiry');
+    if (date && warrantyExpiry) {
+      const period = calculateWarrantyPeriod(date, warrantyExpiry);
+      if (period !== null && period > 0) {
+        form.setFieldValue('warranty_period', period);
+        setWarrantyPeriodCalculated(true);
+        message.success(`Warranty period automatically calculated: ${period} months`);
+      } else {
+        message.warning('Invalid date range: Expiry date should be after start date');
+      }
+    }
+  };
+
+  // Handle warranty expiry date change
+  const handleWarrantyExpiryDateChange = (date) => {
+    const warrantyStart = form.getFieldValue('warranty_start_date');
+    if (date && warrantyStart) {
+      const period = calculateWarrantyPeriod(warrantyStart, date);
+      if (period !== null && period > 0) {
+        form.setFieldValue('warranty_period', period);
+        setWarrantyPeriodCalculated(true);
+        message.success(`Warranty period automatically calculated: ${period} months`);
+      } else {
+        message.warning('Invalid date range: Expiry date should be after start date');
+      }
+    }
+  };
 
   // File upload handlers
   const handleFileChange = (fileType, info) => {
@@ -344,6 +433,67 @@ const Register = () => {
     }
   };
 
+  // Fetch depreciation methods from API
+  const fetchDepreciationMethods = async () => {
+    try {
+      const depreciationMethodsData = await getDepreciationMethods();
+      setDepreciationMethods(depreciationMethodsData);
+      console.log("Depreciation methods loaded successfully:", depreciationMethodsData.length, "items");
+    } catch (error) {
+      console.error("Error fetching depreciation methods:", error);
+      setDepreciationMethods([]);
+    }
+  };
+
+  // Check if asset ID is duplicate
+  const checkAssetIdDuplicate = (assetId, currentEditingAsset = null) => {
+    console.log('🔍 Checking duplicate for:', assetId, 'Assets count:', assets?.length);
+    
+    if (!assetId || !assets || assets.length === 0) {
+      console.log('❌ No assets loaded or empty asset ID');
+      return false;
+    }
+    
+    const existingIds = assets.map(a => a.asset_id).filter(Boolean);
+    console.log('📋 Existing asset IDs:', existingIds);
+    
+    const isDuplicate = assets.some(asset => {
+      // Skip if this is the same asset we're editing
+      if (currentEditingAsset && asset.asset_id === currentEditingAsset.asset_id) {
+        return false;
+      }
+      
+      // Check if asset_id exists and matches (case insensitive)
+      const matches = asset.asset_id && 
+        String(asset.asset_id).toLowerCase() === String(assetId).toLowerCase();
+      
+      if (matches) {
+        console.log('🚨 DUPLICATE FOUND:', asset.asset_id, 'matches', assetId);
+      }
+      
+      return matches;
+    });
+    
+    console.log('✅ Duplicate check result:', isDuplicate);
+    return isDuplicate;
+  };
+
+  // Check if serial number is duplicate
+  const checkSerialNumberDuplicate = (serialNumber, currentEditingAsset = null) => {
+    if (!serialNumber || !assets || assets.length === 0) return false;
+    
+    return assets.some(asset => {
+      // Skip if this is the same asset we're editing
+      if (currentEditingAsset && asset.serial_number === currentEditingAsset.serial_number) {
+        return false;
+      }
+      
+      // Check if serial_number exists and matches (case insensitive)
+      return asset.serial_number && 
+        String(asset.serial_number).toLowerCase() === String(serialNumber).toLowerCase();
+    });
+  };
+
   // Fetch assets from API
   const fetchAssets = async () => {
     try {
@@ -432,13 +582,41 @@ const Register = () => {
   };
   
 
+  // Fetch dropdown data
+  const fetchDropdownData = async () => {
+    try {
+      const [categoriesData, locationsData, usersData] = await Promise.all([
+        getCategories(),
+        getLocations(),
+        getUserNames()
+      ]);
+      
+      console.log('📊 Raw categories data:', categoriesData);
+      console.log('📊 Raw locations data:', locationsData);
+      console.log('📊 Raw users data:', usersData);
+      
+      setCategories(categoriesData);
+      setLocations(locationsData);
+      setUsers(usersData);
+      
+      console.log('Dropdown data loaded:', {
+        categories: categoriesData.length,
+        locations: locationsData.length,
+        users: usersData.length
+      });
+    } catch (error) {
+      console.error('Error fetching dropdown data:', error);
+      message.error('Failed to load dropdown data');
+    }
+  };
+
   useEffect(() => {
     fetchAssets();
-    fetchCategories();
-    fetchVendorNames();
+    fetchDropdownData();
     fetchAssetNames();
     fetchAssetIds();
     fetchAssetTypes();
+    fetchDepreciationMethods();
   }, []);
 
   // Handle table change (pagination, filters, sorting)
@@ -609,6 +787,18 @@ const Register = () => {
       key: "asset_id",
       sorter: (a, b) => safeStringCompare(a.asset_id, b.asset_id),
       ...getColumnSearchProps('asset_id'),
+      render: (text, record) => (
+        <span 
+          onClick={() => fetchAssetDetails(text)}
+          style={{ 
+            cursor: 'pointer',
+            color: 'inherit',
+            textDecoration: 'none'
+          }}
+        >
+          {text}
+        </span>
+      ),
     },
     {
       title: "Asset Name",
@@ -622,6 +812,10 @@ const Register = () => {
       dataIndex: "category",
       key: "category",
       sorter: (a, b) => safeStringCompare(a.category, b.category),
+      render: (text, record) => {
+        console.log('🎯 Category render - text:', text, 'record.category:', record.category, 'record:', record);
+        return getCategoryNameById(record.category);
+      },
       ...getColumnSearchProps('category'),
     },
     {
@@ -636,6 +830,10 @@ const Register = () => {
       dataIndex: "location",
       key: "location",
       sorter: (a, b) => safeStringCompare(a.location, b.location),
+      render: (text, record) => {
+        console.log('🎯 Location render - text:', text, 'record.location:', record.location, 'record:', record);
+        return getLocationNameById(record.location);
+      },
       ...getColumnSearchProps('location'),
     },
     {
@@ -673,7 +871,7 @@ const Register = () => {
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Button 
+          {/* <Button 
             type="default" 
             size="small" 
             icon={<FaEye />}
@@ -682,7 +880,7 @@ const Register = () => {
               e.stopPropagation();
               console.log('View clicked for record:', record);
             }}
-          />
+          /> */}
           <Button 
             type="default" 
             size="small" 
@@ -720,6 +918,9 @@ const Register = () => {
   const showDrawer = (asset = null) => {
     console.log("Opening drawer for asset:", asset);
     setEditingAsset(asset);
+    setAssetIdStatus(null); // Reset asset ID status
+    setSerialNumberStatus(null); // Reset serial number status
+    setWarrantyPeriodCalculated(false); // Reset warranty period calculation status
     if (asset) {
       // Map API field names to form field names (all fields)
       const formData = {
@@ -784,6 +985,9 @@ const Register = () => {
     setOpen(false);
     setEditingAsset(null);
     setSubmitting(false);
+    setAssetIdStatus(null); // Reset asset ID status
+    setSerialNumberStatus(null); // Reset serial number status
+    setWarrantyPeriodCalculated(false); // Reset warranty period calculation status
     form.resetFields();
     // Reset file lists
     setFileList({
@@ -842,7 +1046,7 @@ const Register = () => {
       if (result.success) {
         message.success(`✅ Bulk upload successful! ${result.imported || 0} records imported.`);
         await fetchAssets(); // Refresh the table
-        setBulkUploadVisible(false);
+        setBulkUploadDrawerVisible(false);
       } else {
         message.error(`❌ Upload failed: ${result.message || 'Unknown error'}`);
       }
@@ -869,6 +1073,107 @@ const Register = () => {
     accept: '.xlsx,.xls,.csv',
     beforeUpload: handleBulkUpload,
     showUploadList: false,
+  };
+
+  // Download sample Excel template
+  const downloadSampleExcel = () => {
+    // Define field names only (no sample data)
+    const fieldNames = [
+      'Asset ID',
+      'Asset Name',
+      'Category',
+      'Manufacturer',
+      'Model',
+      'Serial Number',
+      'Location',
+      'Assigned User',
+      'Department',
+      'Building/Facility',
+      'Floor/Room',
+      'GPS Coordinates',
+      'Status',
+      'Purchase Date',
+      'Installation Date',
+      'Warranty Start Date',
+      'Warranty Expiry Date',
+      'Warranty Period (Months)',
+      'AMC Expiry Date',
+      'Order Number',
+      'Supplier/Vendor',
+      'Original Purchase Price',
+      'Current Book Value',
+      'Asset Type',
+      'Depreciation Method'
+    ];
+
+    // Create CSV content with headers only
+    const csvContent = fieldNames.join(',') + '\n';
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'asset_bulk_upload_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    message.success('✅ Excel template downloaded!');
+  };
+
+
+  // Fetch asset details by asset ID
+  const fetchAssetDetails = async (assetId) => {
+    try {
+      setLoadingAssetDetails(true);
+      console.log('Fetching asset details for ID:', assetId);
+      
+      const response = await fetch('http://202.53.92.35:5004/api/assets/assets/details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': sessionStorage.getItem('token'),
+        },
+        body: JSON.stringify({
+          asset_id: assetId
+        })
+      });
+
+      const result = await response.json();
+      console.log('Asset details API response:', result);
+      console.log('Response structure:', JSON.stringify(result, null, 2));
+      
+      // Handle different response structures
+      let assetData = null;
+      if (result.success && result.data) {
+        assetData = result.data;
+      } else if (result.data) {
+        assetData = result.data;
+      } else if (result) {
+        assetData = result;
+      }
+      
+      // If assetData is an array, get the first element
+      if (Array.isArray(assetData) && assetData.length > 0) {
+        assetData = assetData[0];
+      }
+      
+      console.log('Processed asset data:', assetData);
+      
+      if (assetData) {
+        setAssetDetails(assetData);
+        setAssetDetailsVisible(true);
+      } else {
+        message.error('Failed to fetch asset details: ' + (result.message || 'No data received'));
+      }
+    } catch (error) {
+      console.error('Error fetching asset details:', error);
+      message.error('Failed to fetch asset details. Please check your connection.');
+    } finally {
+      setLoadingAssetDetails(false);
+    }
   };
 
 
@@ -901,6 +1206,20 @@ const Register = () => {
     
     if (missingFields.length > 0) {
       message.error(`❌ Invalid data: ${missingFields.join(', ')} are required`);
+      setSubmitting(false);
+      return;
+    }
+
+    // Check for duplicate asset ID before submission
+    if (values.asset_id && checkAssetIdDuplicate(values.asset_id, editingAsset)) {
+      message.error('❌ Asset ID already exists. Please use a different ID.');
+      setSubmitting(false);
+      return;
+    }
+
+    // Check for duplicate serial number before submission
+    if (values.serial_number && checkSerialNumberDuplicate(values.serial_number, editingAsset)) {
+      message.error('❌ Serial number already exists. Please use a different serial number.');
       setSubmitting(false);
       return;
     }
@@ -1244,20 +1563,23 @@ const Register = () => {
           <p className="mt-0">The core screen where all assets are listed and searchable.</p>
         </div>
         <div className="d-flex gap-2">
-          <Upload {...uploadProps}>
-            <button className="btn btn-warning px-4">
-              <FaUpload /> Bulk Upload
-            </button>
-          </Upload>
+          <Button
+            type="default"
+            icon={<FaUpload />}
+            onClick={() => setBulkUploadDrawerVisible(true)}
+          >
+            Bulk Upload
+          </Button>
           <ExportButton
             data={assets}
-            columns={columns}
+            columns={null}
             filename="Asset_Register_Report"
             title="Asset Register Report"
             reportType="asset-register"
             filters={filteredInfo}
             sorter={sortedInfo}
             message={message}
+            includeAllFields={true}
           />
           <Button
             type="primary"
@@ -1268,8 +1590,8 @@ const Register = () => {
           </Button>
         </div>
       </div>
-
       
+        
         <Table
           columns={columns}
           dataSource={assets}
@@ -1285,7 +1607,7 @@ const Register = () => {
           bordered
           size="middle"
         />
-    
+      
 
       {/* Drawer Form */}
       <Drawer
@@ -1317,16 +1639,55 @@ const Register = () => {
                   { 
                     validator: (_, value) => {
                       if (!value) return Promise.resolve();
-                      if (validateAssetId(value)) {
-                        return Promise.resolve();
+                      
+                      // Simple validation - just check if it's not empty and not too long
+                      if (value.length < 1) {
+                        return Promise.reject(new Error('Asset ID cannot be empty'));
                       }
-                      return Promise.reject(new Error('Asset ID must follow format: BLR-IT-LTP-2025-0012'));
+                      
+                      if (value.length > 50) {
+                        return Promise.reject(new Error('Asset ID cannot exceed 50 characters'));
+                      }
+                      
+                      // Check for duplicate asset ID using helper function
+                      if (checkAssetIdDuplicate(value, editingAsset)) {
+                        return Promise.reject(new Error('Asset ID already exists. Please use a different ID.'));
+                      }
+                      
+                      return Promise.resolve();
                     }
                   }
                 ]}
-                tooltip="Format: BLR-IT-LTP-2025-0012 (Location-Department-Type-Year-Number). Leave empty for auto-generation."
+                tooltip="Enter a unique asset ID. Leave empty for auto-generation."
               >
-                <Input placeholder="e.g., BLR-IT-LTP-2025-0012 (auto-generated if empty)" />
+                <Input 
+                  placeholder="Enter unique asset ID (auto-generated if empty)"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value && assets && assets.length > 0) {
+                      setAssetIdStatus('validating');
+                      setTimeout(() => {
+                        if (checkAssetIdDuplicate(value, editingAsset)) {
+                          setAssetIdStatus('duplicate');
+                        } else {
+                          setAssetIdStatus('available');
+                        }
+                        form.validateFields(['asset_id']);
+                      }, 500);
+                    } else {
+                      setAssetIdStatus(null);
+                    }
+                  }}
+                  suffix={
+                    assetIdStatus === 'validating' ? (
+                      <span style={{ color: '#1890ff' }}>Checking...</span>
+                    ) : assetIdStatus === 'available' ? (
+                      <span style={{ color: '#52c41a' }}>✓ Available</span>
+                    ) : assetIdStatus === 'duplicate' ? (
+                      <span style={{ color: '#ff4d4f' }}>✗ Duplicate</span>
+                    ) : null
+                  }
+                />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -1390,10 +1751,50 @@ const Register = () => {
                 label="Serial Number"
                 rules={[
                   { max: 50, message: "Serial number cannot exceed 50 characters" },
-                  { pattern: /^[a-zA-Z0-9\-_]+$/, message: "Serial number can only contain letters, numbers, hyphens, and underscores" }
+                  { pattern: /^[a-zA-Z0-9\-_]+$/, message: "Serial number can only contain letters, numbers, hyphens, and underscores" },
+                  { 
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve();
+                      
+                      // Check for duplicate serial number using helper function
+                      if (checkSerialNumberDuplicate(value, editingAsset)) {
+                        return Promise.reject(new Error('Serial number already exists. Please use a different serial number.'));
+                      }
+                      
+                      return Promise.resolve();
+                    }
+                  }
                 ]}
+                tooltip="Enter a unique serial number for this asset."
               >
-                <Input placeholder="Enter serial number" />
+                <Input 
+                  placeholder="Enter serial number"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value && assets && assets.length > 0) {
+                      setSerialNumberStatus('validating');
+                      setTimeout(() => {
+                        if (checkSerialNumberDuplicate(value, editingAsset)) {
+                          setSerialNumberStatus('duplicate');
+                        } else {
+                          setSerialNumberStatus('available');
+                        }
+                        form.validateFields(['serial_number']);
+                      }, 500);
+                    } else {
+                      setSerialNumberStatus(null);
+                    }
+                  }}
+                  suffix={
+                    serialNumberStatus === 'validating' ? (
+                      <span style={{ color: '#1890ff' }}>Checking...</span>
+                    ) : serialNumberStatus === 'available' ? (
+                      <span style={{ color: '#52c41a' }}>✓ Available</span>
+                    ) : serialNumberStatus === 'duplicate' ? (
+                      <span style={{ color: '#ff4d4f' }}>✗ Duplicate</span>
+                    ) : null
+                  }
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -1420,11 +1821,14 @@ const Register = () => {
                 name="assigned_user"
                 label="Assigned User"
                 rules={[
-                  { max: 50, message: "Assigned user name cannot exceed 50 characters" },
-                  { pattern: /^[a-zA-Z\s]+$/, message: "Assigned user name can only contain letters and spaces" }
+                  { required: true, message: "Please select assigned user" }
                 ]}
               >
-                <Input placeholder="Enter assigned user" />
+                <UserNamesDropdown 
+                  placeholder="Select assigned user"
+                  showSearch={true}
+                  allowClear={true}
+                />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -1582,6 +1986,7 @@ const Register = () => {
                   style={{ width: '100%' }} 
                   format="DD-MM-YYYY"
                   placeholder="Select date (DD-MM-YYYY)"
+                  onChange={handleWarrantyStartDateChange}
                 />
               </Form.Item>
             </Col>
@@ -1608,7 +2013,18 @@ const Register = () => {
                   }
                 ]}
               >
-                <Input type="number" placeholder="Enter warranty period in months" min="0" max="1200" />
+                <Input 
+                  type="number" 
+                  placeholder="Enter warranty period in months" 
+                  min="0" 
+                  max="1200"
+                  suffix={
+                    warrantyPeriodCalculated ? (
+                      <span style={{ color: '#52c41a', fontSize: '12px' }}>Auto-calculated</span>
+                    ) : null
+                  }
+                  onChange={() => setWarrantyPeriodCalculated(false)}
+                />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -1634,6 +2050,7 @@ const Register = () => {
                   style={{ width: '100%' }} 
                   format="DD-MM-YYYY"
                   placeholder="Select date (DD-MM-YYYY)"
+                  onChange={handleWarrantyExpiryDateChange}
                 />
               </Form.Item>
             </Col>
@@ -1680,7 +2097,7 @@ const Register = () => {
                 <Input placeholder="Enter purchase order number" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            {/* <Col span={12}>
               <Form.Item
                 name="supplier_details"
                 label="Supplier/Vendor Details"
@@ -1691,7 +2108,7 @@ const Register = () => {
               >
                 <Input placeholder="Enter supplier/vendor information" />
               </Form.Item>
-            </Col>
+            </Col> */}
           </Row>
 
           {/* Financial Details - COMMENTED OUT */}
@@ -1711,7 +2128,7 @@ const Register = () => {
                       }
                       if (numValue < 0) {
                         return Promise.reject(new Error('Price cannot be negative'));
-                      }
+                      } 
                       if (numValue > 999999999) {
                         return Promise.reject(new Error('Price cannot exceed 999,999,999'));
                       }
@@ -1785,33 +2202,12 @@ const Register = () => {
               <Form.Item
                 name="depreciation_method"
                 label=" Depreciation Method"
-                rules={[
-                  { max: 50, message: "Depreciation method cannot exceed 50 characters" },
-                  { pattern: /^[a-zA-Z0-9\s\-_]+$/, message: "Depreciation method contains invalid characters" }
-                ]}
               >
-                <Select placeholder="Select depreciation method">
-                  <Option value="Straight Line Method (SLM)">Straight Line Method (SLM)</Option>
-                  <Option value="Written Down Value (WDV)">Written Down Value (WDV)</Option>
-                  <Option value="Double Declining Balance (DDB)">Double Declining Balance (DDB)</Option>
-                  <Option value="Sum of the Years' Digits (SYD)">Sum of the Years' Digits (SYD)</Option>
-                  <Option value="Units of Production">Units of Production</Option>
-                  <Option value="No Depreciation">No Depreciation</Option>
-                  <Option value="Accelerated Depreciation">Accelerated Depreciation</Option>
-                  <Option value="Declining Balance Method">Declining Balance Method</Option>
-                  <Option value="150% Declining Balance">150% Declining Balance</Option>
-                  <Option value="Compound Interest Method">Compound Interest Method</Option>
-                  <Option value="Annuity Method">Annuity Method</Option>
-                  <Option value="Revaluation Method">Revaluation Method</Option>
-                  <Option value="Group or Composite Method">Group or Composite Method</Option>
-                  <Option value="Depletion Method">Depletion Method</Option>
-                  <Option value="Machine Hour Rate Method">Machine Hour Rate Method</Option>
-                  <Option value="Sinking Fund Method">Sinking Fund Method</Option>
-                  <Option value="Insurance Policy Method">Insurance Policy Method</Option>
-                  <Option value="Activity-Based Depreciation">Activity-Based Depreciation</Option>
-                  <Option value="Usage-Based Depreciation">Usage-Based Depreciation</Option>
-                  <Option value="Custom Schedule">Custom Schedule</Option>
-                </Select>
+                <DepreciationMethodsDropdown 
+                  placeholder="Select depreciation method"
+                  showSearch={true}
+                  allowClear={true}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -2097,6 +2493,504 @@ const Register = () => {
           </div>
         </Form>
       </Drawer>
+
+      {/* Asset Details Modal */}
+      <Modal
+        title="Asset Details"
+        open={assetDetailsVisible}
+        onCancel={() => setAssetDetailsVisible(false)}
+        width={800}
+        footer={[
+          <Button key="close" onClick={() => setAssetDetailsVisible(false)}>
+            Close
+          </Button>
+        ]}
+      >
+        {assetDetails ? (
+          <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            {/* Basic Information Section */}
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileTextIcon /> Basic Information
+                </span>
+              }
+              size="small" 
+              style={{ marginBottom: '16px' }}
+              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
+            >
+              <Row gutter={[16, 12]}>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset ID</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.asset_id || '-'}
+            </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset Name</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.asset_name || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset Tag</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.asset_tag || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Category</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.category || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Status</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.status || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset Type</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.asset_type || '-'}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+                  </Card>
+
+            {/* Technical Specifications */}
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ToolOutlined /> Technical Specifications
+                </span>
+              }
+              size="small" 
+              style={{ marginBottom: '16px' }}
+              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
+            >
+              <Row gutter={[16, 12]}>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Manufacturer</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.manufacturer_brand || assetDetails.manufacturer || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Model</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.model_number || assetDetails.model || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Serial Number</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.serial_number || assetDetails.serial || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>BYOD</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.byod || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Requestable</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.requestable || '-'}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+                  </Card>
+
+            {/* Location & Assignment */}
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <EnvironmentOutlined /> Location & Assignment
+                </span>
+              }
+              size="small" 
+              style={{ marginBottom: '16px' }}
+              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
+            >
+              <Row gutter={[16, 12]}>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Location</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {getLocationNameById(assetDetails.location) || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Assigned User</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {getUserNameById(assetDetails.assigned_user) || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Department</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.owning_department || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Building/Facility</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.building_facility || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Floor/Room</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.floor_room_number || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>GPS Coordinates</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.gps_coordinates || '-'}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+                  </Card>
+
+            {/* Financial Information */}
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <DollarOutlined /> Financial Information
+                </span>
+              }
+              size="small" 
+              style={{ marginBottom: '16px' }}
+              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
+            >
+              <Row gutter={[16, 12]}>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Original Price</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#52c41a' }}>
+                      ₹{assetDetails.original_purchase_price || assetDetails.purchase_cost || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Current Value</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#1890ff' }}>
+                      ₹{assetDetails.current_book_value || assetDetails.current_value || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Depreciation Rate</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.depreciation || '-'}%
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Depreciation Method</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.depreciation_method || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Fully Depreciated</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.fully_depreciated || '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Vendor</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.supplier_vendor || assetDetails.supplier || '-'}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+                  </Card>
+
+            {/* Dates & Warranty */}
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CalendarOutlined /> Dates & Warranty
+                </span>
+              }
+              size="small" 
+              style={{ marginBottom: '16px' }}
+              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
+            >
+              <Row gutter={[16, 12]}>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Purchase Date</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.purchase_date ? new Date(assetDetails.purchase_date).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Installation Date</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.installation_date ? new Date(assetDetails.installation_date).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Warranty Expiry</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.warranty_expiry ? new Date(assetDetails.warranty_expiry).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Warranty Period</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.warranty_period_months || '-'} months
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>AMC Expiry</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.amc_expiry ? new Date(assetDetails.amc_expiry).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>EOL Date</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.eol_date ? new Date(assetDetails.eol_date).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>EOL Rate</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.eol_rate || '-'}%
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Order Number</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                      {assetDetails.order_number || '-'}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+                  </Card>
+
+            {/* Activity & Usage */}
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BarChartOutlined /> Activity & Usage
+                </span>
+              }
+              size="small" 
+              style={{ marginBottom: '16px' }}
+              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
+            >
+              <Row gutter={[16, 12]}>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Checkouts</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#1890ff' }}>
+                      {assetDetails.checkouts || '0'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Checkins</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#52c41a' }}>
+                      {assetDetails.checkins || '0'}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={8}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Requests</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#fa8c16' }}>
+                      {assetDetails.requests || '0'}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+                  </Card>
+
+            {/* Additional Information */}
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileOutlined /> Additional Information
+                </span>
+              }
+              size="small"
+              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
+            >
+              <Row gutter={[16, 12]}>
+                <Col span={24}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Notes</div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', lineHeight: '1.5' }}>
+                      {assetDetails.notes || '-'}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '16px', color: '#666' }}>Loading asset details...</div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Bulk Upload Drawer */}
+      <Drawer
+        title="Bulk Upload Assets"
+        width={600}
+        onClose={() => setBulkUploadDrawerVisible(false)}
+        open={bulkUploadDrawerVisible}
+        styles={{ body: { paddingBottom: 80 } }}
+        extra={
+          <Space>
+            <Button onClick={() => setBulkUploadDrawerVisible(false)}>
+              Cancel
+            </Button>
+          </Space>
+        }
+      >
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileTextOutlined /> Important Fields Instructions
+          </h4>
+          <div style={{ 
+            background: '#f6ffed', 
+            border: '1px solid #b7eb8f', 
+            borderRadius: '6px', 
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <h5 style={{ color: '#52c41a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircleOutlined /> Required Fields (Must be filled):
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li><strong>Asset Name</strong> - Name of the asset</li>
+              <li><strong>Category</strong> - Asset category (must match existing categories)</li>
+              <li><strong>Manufacturer</strong> - Manufacturer/Brand name</li>
+              <li><strong>Model</strong> - Model number</li>
+              <li><strong>Location</strong> - Asset location (must match existing locations)</li>
+              <li><strong>Assigned User</strong> - User assigned to the asset (must match existing users)</li>
+              <li><strong>Status</strong> - Asset status (Active, Inactive, etc.)</li>
+              <li><strong>Current Book Value</strong> - Current value of the asset</li>
+              <li><strong>Supplier/Vendor</strong> - Vendor name (must match existing vendors)</li>
+            </ul>
+          </div>
+          
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudDownloadOutlined /> Download Sample Template
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Download the sample Excel template to see the correct format and required fields.
+          </p>
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={downloadSampleExcel}
+            style={{ marginBottom: '16px' }}
+          >
+            Download Sample Excel Template
+          </Button>
+        </div>
+
+        <div>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudUploadOutlined /> Upload Your File
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Select your Excel or CSV file to upload. The system will validate the data and import the assets.
+          </p>
+          <Upload.Dragger
+            {...uploadProps}
+            style={{ 
+              background: '#fafafa',
+              border: '2px dashed #d9d9d9',
+              borderRadius: '6px'
+            }}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            </p>
+            <p className="ant-upload-text" style={{ fontSize: '16px', fontWeight: '500' }}>
+              Click or drag file to this area to upload
+            </p>
+            <p className="ant-upload-hint" style={{ color: '#666' }}>
+              Support for Excel (.xlsx, .xls) and CSV files. Maximum file size: 10MB.
+              <br />
+              Make sure your file follows the sample template format.
+            </p>
+          </Upload.Dragger>
+        </div>
+      </Drawer>
+
     </div>
   );
 };

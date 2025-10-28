@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../App.css";
-import { FaSearch, FaEdit, FaTrash } from "react-icons/fa";
-import { Button, Col, Drawer, Form, Input, Row, Checkbox, Space, message, Table, Popconfirm } from "antd";
-import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import { FaSearch, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaCheck, FaTimes } from "react-icons/fa";
+import { Button, Col, Drawer, Form, Input, Row, Checkbox, Space, message, Table, Popconfirm, Select } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { api } from '../../config/api';
 import ExportButton from '../../components/ExportButton';
 import { safeStringCompare, safeDateCompare } from '../../utils/tableUtils';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 
 const Roles = () => {
-  const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -23,23 +22,45 @@ const Roles = () => {
   const [modules, setModules] = useState([]); // dynamic modules
   const [selectedPermissions, setSelectedPermissions] = useState({}); // {module_id: [action_ids]}
   const [editingRole, setEditingRole] = useState(null); // Track which role is being edited
+  const [filteredInfo, setFilteredInfo] = useState({});
+  const [sortedInfo, setSortedInfo] = useState({});
+  const [selectAllModules, setSelectAllModules] = useState(false);
 
   // Fetch roles list
   useEffect(() => {
     const fetchRoles = async () => {
       try {
         setLoading(true);
-        const result = await api.getRoles();
+        const response = await fetch('http://202.53.92.35:5004/api/roles/getRolesList', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            "x-access-token": sessionStorage.getItem("token"),
+          }
+        });
+        
+        console.log('Roles API Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Roles API Response:', result);
         
         let rolesData = [];
-        if (result.data?.success && Array.isArray(result.data.data)) {
-          // API returns {success: true, data: [...]}
-          rolesData = result.data.data;
-        } else if (Array.isArray(result.data)) {
-          // API returns array directly
+        if (Array.isArray(result)) {
+          rolesData = result;
+        } else if (result.data && Array.isArray(result.data)) {
           rolesData = result.data;
+        } else if (result.roles && Array.isArray(result.roles)) {
+          rolesData = result.roles;
+        } else if (result.result && Array.isArray(result.result)) {
+          rolesData = result.result;
         } else {
-          console.error("Unexpected API response:", result.data);
+          console.error("Unexpected roles API response structure:", result);
           message.error("Unexpected roles data format from server");
           return;
         }
@@ -49,9 +70,11 @@ const Roles = () => {
           key: item.role_id || index.toString(),
         }));
         setRoles(dataWithKeys);
+        console.log(`Roles loaded successfully (${dataWithKeys.length} items)`);
       } catch (error) {
         console.error("Error fetching roles:", error);
-        message.error("Failed to fetch roles");
+        message.error(`Failed to fetch roles: ${error.message}`);
+        setRoles([]);
       } finally {
         setLoading(false);
       }
@@ -63,14 +86,48 @@ const Roles = () => {
   useEffect(() => {
     const fetchModules = async () => {
       try {
-        const result = await api.getModuleActions();
-        if (result.success && Array.isArray(result.data)) {
-          setModules(result.data);
+        console.log('Fetching modules from API...');
+        const response = await fetch('http://202.53.92.35:5004/api/roles/ListModules', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            "x-access-token": sessionStorage.getItem("token"),
+          }
+        });
+        
+        console.log('API Response status:', response.status);
+        
+        const result = await response.json();
+        console.log('Modules API Response:', result);
+    
+        // Handle different response structures
+        let data = [];
+        if (Array.isArray(result)) {
+          data = result;
+          console.log("Using direct array from API");
+        } else if (result.data && Array.isArray(result.data)) {
+          data = result.data;
+        } else if (result.modules && Array.isArray(result.modules)) {
+          data = result.modules;
+        } else if (result.module_actions && Array.isArray(result.module_actions)) {
+          data = result.module_actions;
+        } else if (result.result && Array.isArray(result.result)) {
+          data = result.result;
+        } else if (result.items && Array.isArray(result.items)) {
+          data = result.items;
         } else {
-          console.error("Unexpected API response:", result.data);
+          console.error("Unexpected API response structure:", result);
+          data = [];
         }
+        
+        setModules(data);
+        console.log(`Modules loaded successfully (${data.length} items)`);
       } catch (error) {
         console.error("Error fetching modules:", error);
+        message.error(`Failed to load modules: ${error.message}`);
+        setModules([]);
       }
     };
     fetchModules();
@@ -79,11 +136,32 @@ const Roles = () => {
   // Fetch role with permissions
   const fetchRoleWithPermissions = async (roleId) => {
     try {
-      const result = await api.getRoleWithPermissions({ role_id: roleId });
-      if (result.data?.success) {
-        return result.data.data;
+      const response = await fetch('http://202.53.92.35:5004/api/roles/getRoleWithPermissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          "x-access-token": sessionStorage.getItem("token"),
+        },
+        body: JSON.stringify({ role_id: roleId })
+      });
+      
+      console.log('Role permissions API Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Role permissions API Response:', result);
+      
+      if (result.success) {
+        return result.data;
+      } else if (result.role_id) {
+        // Handle case where API returns role data directly without success flag
+        console.log("API returned role data directly:", result);
+        return result;
       } else {
-        console.error("Unexpected API response:", result.data);
+        console.error("API returned success: false:", result);
         return null;
       }
     } catch (error) {
@@ -92,19 +170,47 @@ const Roles = () => {
     }
   };
 
-  // Search filter
-  const filteredRoles = roles.filter(
-    (role) =>
-      role.role_name?.toLowerCase().includes(search.toLowerCase()) ||
-      role.role_code?.toLowerCase().includes(search.toLowerCase())
-  );
+
+  // Toggle role status
+  const toggleRoleStatus = async (roleId) => {
+    try {
+      const response = await fetch('http://202.53.92.35:5004/api/roles/toggle-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          "x-access-token": sessionStorage.getItem("token"),
+        },
+        body: JSON.stringify({ role_id: roleId })
+      });
+      
+      console.log('Toggle status API Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Toggle status API Response:', result);
+      
+      if (result.success || result.role_id) {
+        message.success("Role status updated successfully!");
+        // Refresh roles list
+        await refreshRolesList();
+      } else {
+        message.error("Failed to update role status");
+      }
+    } catch (error) {
+      console.error("Error toggling role status:", error);
+      message.error(`Failed to update role status: ${error.message}`);
+    }
+  };
 
   // Table columns with sorting
   const columns = [
     {
       title: "S.No",
       key: "serial",
-      width: 80,
+      width: 60,
       render: (text, record, index) => {
         const current = pagination.current || 1;
         const pageSize = pagination.pageSize || 10;
@@ -115,87 +221,126 @@ const Roles = () => {
       title: "Code",
       dataIndex: "role_code",
       key: "role_code",
+      width: 100,
       sorter: (a, b) => safeStringCompare(a.role_code, b.role_code),
     },
     {
       title: "Name",
       dataIndex: "role_name",
       key: "role_name",
+      width: 150,
       sorter: (a, b) => safeStringCompare(a.role_name, b.role_name),
     },
     {
-      title: "Created On",
-      dataIndex: "created_on",
-      key: "created_on",
-      sorter: (a, b) => safeDateCompare(a.created_on, b.created_on),
-      render: (date) => formatDateForDisplay(date) || "-",
+      title: "Status",
+      dataIndex: "role_status",
+      key: "role_status",
+      width: 100,
+      sorter: (a, b) => safeStringCompare(a.role_status, b.role_status),
+      render: (status) => {
+        const isActive = status === 'Active' || status === 1 || status === '1';
+        return (
+          <span 
+            style={{ 
+              color: isActive ? '#52c41a' : '#ff4d4f',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {isActive ? <FaCheck /> : <FaTimes />}
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+        );
+      },
+      filters: [
+        { text: 'Active', value: 'Active' },
+        { text: 'Inactive', value: 'Inactive' },
+      ],
+      onFilter: (value, record) => {
+        const isActive = record.role_status === 'Active' || record.role_status === 1 || record.role_status === '1';
+        return value === 'Active' ? isActive : !isActive;
+      },
+      filteredValue: filteredInfo.role_status || null,
     },
     {
       title: "Actions",
       key: "actions",
-      render: (_, record) => (
-        <Space>
-          <Button 
-            type="default" 
-            size="small" 
-            icon={<FaEdit />}
-            onClick={() => showEditDrawer(record)}
-          />
-          {/* <Popconfirm
-            title="Are you sure to delete this role?"
-            onConfirm={async () => {
-              try {
-                const deleteResult = await api.deleteRole({ role_id: record.role_id });
-                message.success("Role deleted successfully");
-                // Refresh roles list
-                const refreshed = await api.getRoles();
-                if (refreshed.data?.success && Array.isArray(refreshed.data.data)) {
-                  const dataWithKeys = refreshed.data.data.map((item, index) => ({
-                    ...item,
-                    key: item.role_id || index.toString(),
-                  }));
-                  setRoles(dataWithKeys);
-                }
-              } catch (error) {
-                console.error("Error deleting role:", error);
-                message.error("Failed to delete role");
-              }
-            }}
-          >
+      width: 120,
+      render: (_, record) => {
+        const isActive = record.role_status === 'Active' || record.role_status === 1 || record.role_status === '1';
+        return (
+          <Space>
             <Button 
-              type="primary" 
-              danger 
+              type="default" 
               size="small" 
-              icon={<FaTrash />}
+              icon={<FaEdit />}
+              onClick={() => showEditDrawer(record)}
+              title="Edit Role"
             />
-          </Popconfirm> */}
-        </Space>
-      ),
+            <Button 
+              type={isActive ? 'default' : 'primary'}
+              size="small"
+              icon={isActive ? <FaToggleOff /> : <FaToggleOn />}
+              onClick={() => toggleRoleStatus(record.role_id)}
+              title={isActive ? 'Deactivate Role' : 'Activate Role'}
+            />
+          </Space>
+        );
+      },
     },
   ];
 
-  // Handle pagination change
-  const handleTableChange = (pagination) => {
+  // Handle table change for pagination, filters, and sorting
+  const handleTableChange = (pagination, filters, sorter) => {
     setPagination(pagination);
+    setFilteredInfo(filters);
+    setSortedInfo(sorter);
   };
 
 
   // Update module function
   const updateModule = async (moduleId, moduleName, moduleCode) => {
     try {
-      const result = await api.updateModules({
-        module_id: moduleId,
-        module_name: moduleName,
-        module_code: moduleCode
+      const response = await fetch('http://202.53.92.35:5004/api/roles/updateModule', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          "x-access-token": sessionStorage.getItem("token"),
+        },
+        body: JSON.stringify({
+          module_id: moduleId,
+          module_name: moduleName,
+          module_code: moduleCode
+        })
       });
       
-      if (result.data?.success) {
+      const result = await response.json();
+      
+      if (result.success) {
         message.success("Module updated successfully");
         // Refresh modules list
-        const refreshed = await api.getModules();
-        if (refreshed.data?.success && Array.isArray(refreshed.data.data)) {
-          setModules(refreshed.data.data);
+        const refreshResponse = await fetch('http://202.53.92.35:5004/api/roles/getModuleActions', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            "x-access-token": sessionStorage.getItem("token"),
+          }
+        });
+        
+        const refreshResult = await refreshResponse.json();
+        let data = [];
+        if (Array.isArray(refreshResult)) {
+          data = refreshResult;
+        } else if (refreshResult.data && Array.isArray(refreshResult.data)) {
+          data = refreshResult.data;
+        } else if (refreshResult.modules && Array.isArray(refreshResult.modules)) {
+          data = refreshResult.modules;
+        } else if (refreshResult.module_actions && Array.isArray(refreshResult.module_actions)) {
+          data = refreshResult.module_actions;
         }
+        setModules(data);
       } else {
         message.error("Failed to update module");
       }
@@ -211,6 +356,9 @@ const Roles = () => {
     setOpen(true);
     form.resetFields();
     setSelectedPermissions({});
+    setSelectAllModules(false);
+    // Set default status for new roles
+    form.setFieldsValue({ status: 'Active' });
   };
 
   const showEditDrawer = async (role) => {
@@ -221,6 +369,7 @@ const Roles = () => {
     form.setFieldsValue({
       name: role.role_name,
       code: role.role_code,
+      status: role.role_status || 'Active',
     });
 
     // Fetch and set permissions for this role
@@ -231,8 +380,15 @@ const Roles = () => {
         permissions[perm.module_id] = perm.action_ids || [];
       });
       setSelectedPermissions(permissions);
+      
+      // Check if all modules are selected
+      const allModulesSelected = modules.every(module => 
+        permissions[module.module_id]?.length === module.actions.length
+      );
+      setSelectAllModules(allModulesSelected);
     } else {
       setSelectedPermissions({});
+      setSelectAllModules(false);
     }
   };
 
@@ -253,33 +409,73 @@ const Roles = () => {
     });
   };
 
+  // Handle select all modules and actions
+  const handleSelectAll = (checked) => {
+    setSelectAllModules(checked);
+    if (checked) {
+      const allPermissions = {};
+      modules.forEach(module => {
+        allPermissions[module.module_id] = module.actions.map(action => action.action_id);
+      });
+      setSelectedPermissions(allPermissions);
+    } else {
+      setSelectedPermissions({});
+    }
+  };
+
+  // Handle module selection
+  const handleModuleChange = (moduleId, checked) => {
+    if (checked) {
+      const module = modules.find(m => m.module_id === moduleId);
+      if (module) {
+        setSelectedPermissions(prev => ({
+          ...prev,
+          [moduleId]: module.actions.map(action => action.action_id)
+        }));
+      }
+    } else {
+      setSelectedPermissions(prev => ({
+        ...prev,
+        [moduleId]: []
+      }));
+    }
+  };
+
   // Submit role
   const onSubmit = async () => {
     try {
       const values = await form.validateFields();
       
       if (editingRole) {
-        // Update existing role
+        // Update existing role - using insertRolePermissions for both create and update
         const updatePayload = {
           role_id: editingRole.role_id,
           role_name: values.name,
           role_code: values.code,
+          role_status: values.status || 'Active',
+          permissions: Object.entries(selectedPermissions).map(([moduleId, actionIds]) => ({
+            module_id: parseInt(moduleId, 10),
+            action_ids: actionIds,
+          })),
         };
 
-        const result = await api.updateRole(updatePayload);
+        const response = await fetch('http://202.53.92.35:5004/api/roles/insertRolePermissions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            "x-access-token": sessionStorage.getItem("token"),
+          },
+          body: JSON.stringify(updatePayload)
+        });
 
-        if (result.data?.success) {
+        const result = await response.json();
+        console.log('Update role API Response:', result);
+
+        if (result.success || result.role_id) {
           message.success("Role updated successfully!");
           setOpen(false);
           // Refresh roles list
-          const refreshed = await api.getRoles();
-          if (refreshed.data?.success && Array.isArray(refreshed.data.data)) {
-            const dataWithKeys = refreshed.data.data.map((item, index) => ({
-              ...item,
-              key: item.role_id || index.toString(),
-            }));
-            setRoles(dataWithKeys);
-          }
+          await refreshRolesList();
         } else {
           message.error("Failed to update role.");
         }
@@ -288,28 +484,30 @@ const Roles = () => {
         const payload = {
           role_name: values.name,
           role_code: values.code,
-          created_by: 1,
-          updated_by: 1,
+          role_status: values.status || 'Active',
           permissions: Object.entries(selectedPermissions).map(([moduleId, actionIds]) => ({
             module_id: parseInt(moduleId, 10),
             action_ids: actionIds,
           })),
         };
 
-        const result = await api.createRolePermissions(payload);
+        const response = await fetch('http://202.53.92.35:5004/api/roles/insertRolePermissions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            "x-access-token": sessionStorage.getItem("token"),
+          },
+          body: JSON.stringify(payload)
+        });
 
-        if (result.data?.success) {
+        const result = await response.json();
+        console.log('Create role API Response:', result);
+
+        if (result.success) {
           message.success("Role added successfully!");
           setOpen(false);
           // Refresh roles list
-          const refreshed = await api.getRoles();
-          if (refreshed.data?.success && Array.isArray(refreshed.data.data)) {
-            const dataWithKeys = refreshed.data.data.map((item, index) => ({
-              ...item,
-              key: item.role_id || index.toString(),
-            }));
-            setRoles(dataWithKeys);
-          }
+          await refreshRolesList();
         } else {
           message.error("Failed to add role.");
         }
@@ -317,6 +515,39 @@ const Roles = () => {
     } catch (error) {
       console.error("Error saving role:", error);
       message.error(`Error while ${editingRole ? 'updating' : 'adding'} role.`);
+    }
+  };
+
+  // Helper function to refresh roles list
+  const refreshRolesList = async () => {
+    try {
+      const response = await fetch('http://202.53.92.35:5004/api/roles/getRolesList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          "x-access-token": sessionStorage.getItem("token"),
+        }
+      });
+      
+      const result = await response.json();
+      let rolesData = [];
+      if (Array.isArray(result)) {
+        rolesData = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        rolesData = result.data;
+      } else if (result.roles && Array.isArray(result.roles)) {
+        rolesData = result.roles;
+      }
+      
+      const dataWithKeys = rolesData.map((item, index) => ({
+        ...item,
+        key: item.role_id || index.toString(),
+      }));
+      setRoles(dataWithKeys);
+    } catch (error) {
+      console.error("Error refreshing roles list:", error);
     }
   };
 
@@ -329,21 +560,11 @@ const Roles = () => {
         </p>
       
 
-      {/* Search + Add button */}
-      <div className="actions-bar d-flex justify-content-between align-items-center mb-2">
-        <div className="search-box d-flex align-items-center">
-          <Input
-            placeholder="Search Role by name or code..."
-            prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 300 }}
-            allowClear
-          />
-        </div>
+      {/* Action buttons */}
+      <div className="actions-bar d-flex justify-content-end align-items-center mb-2">
         <div className="d-flex gap-2">
           <ExportButton
-            data={filteredRoles}
+            data={roles}
             columns={columns}
             filename="Roles_Management_Report"
             title="Roles Management Report"
@@ -351,6 +572,7 @@ const Roles = () => {
             filters={{}}
             sorter={{}}
             message={message}
+            includeAllFields={true}
           />
           <Button
             type="primary"
@@ -363,13 +585,10 @@ const Roles = () => {
       </div>
 
       {/* Roles table */}
-      <div className="card af-card mt-3">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="card-title mb-0">Roles List</h5>
-        </div>
+      
         <Table
           columns={columns}
-          dataSource={filteredRoles}
+          dataSource={roles}
           loading={loading}
           pagination={{
             current: pagination.current,
@@ -381,13 +600,14 @@ const Roles = () => {
           onChange={handleTableChange}
           bordered
           size="middle"
+          scroll={{ x: 800 }}
         />
-      </div>
+      
 
       {/* Drawer */}
       <Drawer
-        title={editingRole ? "Update Role" : "Add Roles Details"}
-        width={720}
+        title={editingRole ? "Update Role" : "Add Role Details"}
+        width={800}
         onClose={onClose}
         open={open}
         styles={{ body: { paddingBottom: 80 } }}
@@ -401,47 +621,105 @@ const Roles = () => {
         }
       >
         <Form form={form} layout="vertical" hideRequiredMark>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="code"
-                label="Code"
-                rules={[{ required: true, message: "Please enter code" }]}
-              >
-                <Input placeholder="Enter role code" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="Name"
-                rules={[{ required: true, message: "Please enter name" }]}
-              >
-                <Input placeholder="Enter role name" />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* Role Information Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <h5 style={{ marginBottom: '16px', color: '#333', fontWeight: '600' }}>Role Information</h5>
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item
+                  name="code"
+                  label={<span style={{ color: '#333' }}>* Code</span>}
+                  rules={[{ required: true, message: "Please enter role code" }]}
+                >
+                  <Input placeholder="Enter your code" />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="name"
+                  label={<span style={{ color: '#333' }}>* Name</span>}
+                  rules={[{ required: true, message: "Please enter role name" }]}
+                >
+                  <Input placeholder="Enter name" />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="status"
+                  label="Status"
+                  rules={[{ required: true, message: "Please select status" }]}
+                >
+                  <Select placeholder="Select status">
+                    <Option value="Active">Active</Option>
+                    <Option value="Inactive">Inactive</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
 
-          {/* Permissions */}
-          {modules.map((module) => (
-            <div key={module.module_id} className="mt-3 p-2 border rounded bg-light">
-              <h6>{module.module_name}</h6>
-              <Row gutter={16}>
-                {module.actions.map((action) => (
-                  <Col span={4} key={action.action_id}>
-                    <Checkbox
-                      checked={selectedPermissions[module.module_id]?.includes(action.action_id)}
-                      onChange={(e) =>
-                        handlePermissionChange(module.module_id, action.action_id, e.target.checked)
-                      }
-                    >
-                      {action.action_name}
-                    </Checkbox>
-                  </Col>
-                ))}
-              </Row>
-            </div>
-          ))}
+          {/* Global Select All */}
+          <div style={{ marginBottom: '24px' }}>
+            <Checkbox
+              checked={selectAllModules}
+              onChange={(e) => handleSelectAll(e.target.checked)}
+              style={{ fontSize: '16px', fontWeight: '500' }}
+            >
+              Select All Modules & Actions
+            </Checkbox>
+          </div>
+
+          {/* Modules and Actions Sections */}
+          {modules.map((module) => {
+            // Define standard actions for each module
+            const standardActions = [
+              { action_id: 'add', action_name: 'Add' },
+              { action_id: 'edit', action_name: 'Edit' },
+              { action_id: 'view', action_name: 'View' },
+              { action_id: 'delete', action_name: 'Delete' },
+              { action_id: 'export', action_name: 'Export' },
+              { action_id: 'list', action_name: 'List' }
+            ];
+            
+            const isModuleFullySelected = selectedPermissions[module.module_id]?.length === standardActions.length;
+            const isModulePartiallySelected = selectedPermissions[module.module_id]?.length > 0 && !isModuleFullySelected;
+            
+            return (
+              <div key={module.module_id} style={{ 
+                marginBottom: '16px', 
+                padding: '16px', 
+                backgroundColor: '#f8f9fa', 
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <Checkbox
+                    checked={isModuleFullySelected}
+                    indeterminate={isModulePartiallySelected}
+                    onChange={(e) => handleModuleChange(module.module_id, e.target.checked)}
+                    style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}
+                  >
+                    {module.module_name}
+                  </Checkbox>
+                </div>
+                <Row gutter={[8, 8]}>
+                  {standardActions.map((action) => (
+                    <Col span={4} key={action.action_id}>
+                      <Checkbox
+                        checked={selectedPermissions[module.module_id]?.includes(action.action_id)}
+                        onChange={(e) =>
+                          handlePermissionChange(module.module_id, action.action_id, e.target.checked)
+                        }
+                        style={{ fontSize: '14px' }}
+                      >
+                        {action.action_name}
+                      </Checkbox>
+                    </Col>
+                  ))}
+                </Row>
+              </div>
+            );
+          })}
         </Form>
       </Drawer>
     </div>
