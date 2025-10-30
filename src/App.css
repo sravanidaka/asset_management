@@ -2573,3 +2573,70 @@ body {
     font-size: 0.8rem !important;
   }
 }
+/* Drawer buttons unified style */
+.drawer-primary-btn,
+.ant-btn.drawer-primary-btn,
+button.drawer-primary-btn {
+  background-color: #a0eaf7 !important;
+  border-color: #a0eaf7 !important;
+  color: #ffffff !important;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(160, 234, 247, 0.5);
+}
+
+.drawer-primary-btn:hover,
+.drawer-primary-btn:focus,
+.ant-btn.drawer-primary-btn:hover,
+.ant-btn.drawer-primary-btn:focus {
+  background-color: #8ae1f2 !important;
+  border-color: #8ae1f2 !important;
+  color: #ffffff !important;
+}
+
+.drawer-primary-btn:active,
+.ant-btn.drawer-primary-btn:active {
+  background-color: #78d8ec !important;
+  border-color: #78d8ec !important;
+  color: #ffffff !important;
+}
+
+/* Apply same color to ALL Ant Design buttons inside any Drawer */
+.ant-drawer .ant-btn,
+.ant-drawer-footer .ant-btn {
+  background-color: #a0eaf7 !important;
+  border-color: #a0eaf7 !important;
+  color: #ffffff !important;
+  height: 44px;
+  /* uniform height */
+  padding: 0 24px;
+  /* uniform horizontal padding */
+  border-radius: 12px;
+  min-width: 160px;
+  /* uniform width */
+  font-weight: 600;
+}
+
+.ant-drawer .ant-btn:hover,
+.ant-drawer .ant-btn:focus,
+.ant-drawer-footer .ant-btn:hover,
+.ant-drawer-footer .ant-btn:focus {
+  background-color: #8ae1f2 !important;
+  border-color: #8ae1f2 !important;
+  color: #ffffff !important;
+}
+
+.ant-drawer .ant-btn:active,
+.ant-drawer-footer .ant-btn:active {
+  background-color: #78d8ec !important;
+  border-color: #78d8ec !important;
+  color: #ffffff !important;
+}
+
+/* Right-align and evenly space action buttons in the last Form.Item inside drawers */
+.ant-drawer .ant-form-item:last-child .ant-space,
+.ant-drawer .ant-drawer-footer .ant-space {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  gap: 12px;
+}

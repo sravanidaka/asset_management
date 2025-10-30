@@ -52,6 +52,7 @@ const Procure = () => {
   const [sortedInfo, setSortedInfo] = useState({});
   const [bulkUploadVisible, setBulkUploadVisible] = useState(false);
   const [bulkUploadDrawerVisible, setBulkUploadDrawerVisible] = useState(false);
+  const [assetOptions, setAssetOptions] = useState([]);
 
   // Fetch requested-by options from API
   const fetchRequestedByOptions = async () => {
@@ -120,6 +121,44 @@ const Procure = () => {
         { name: "David Brown", id: "david_brown" }
       ];
       setRequestedByOptions(defaultOptions);
+    }
+  };
+
+  // Fetch assets for Asset ID dropdown (showing Asset Code labels)
+  const fetchAssetsForDropdown = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://202.53.92.35:5004/api/assets/dropdown/asset-ids', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'x-access-token': token || ''
+        }
+      });
+
+      if (!response.ok) {
+        console.warn('Assets dropdown API failed with status:', response.status);
+        setAssetOptions([]);
+        return;
+      }
+
+      const result = await response.json();
+
+      // Expected shape: { success: true, data: [ { asset_id, asset_code }, ... ] }
+      const assetsData = Array.isArray(result?.data) ? result.data : (Array.isArray(result) ? result : []);
+      const options = assetsData
+        .map((item) => ({
+          value: item.asset_id || item.id,
+          label: item.asset_code || item.asset_id || item.asset_name || '',
+        }))
+        .filter(opt => opt.value && String(opt.value).trim() !== '' && opt.label && String(opt.label).trim() !== '');
+
+      setAssetOptions(options);
+    } catch (error) {
+      console.error('Error fetching assets for dropdown:', error);
+      setAssetOptions([]);
     }
   };
 
@@ -281,6 +320,7 @@ const Procure = () => {
     fetchCategories();
     fetchRequestedByOptions();
     fetchProcurements();
+    fetchAssetsForDropdown();
   }, []);
 
   // Handle table change for filters and sorting
@@ -1056,13 +1096,19 @@ const Procure = () => {
               <Form.Item
                 name="asset_id"
                 label="Asset ID"
-                rules={[{ required: true, message: "Please select asset ID" }]}
+                rules={[{ required: true, message: "Please select asset" }]}
               >
-                <AssetIdsDropdownNew 
-                  placeholder="Select asset ID"
-                  showSearch={true}
-                  allowClear={true}
-                />
+                <Select
+                  showSearch
+                  placeholder="Select asset (shows Asset Code)"
+                  optionFilterProp="children"
+                  filterOption={(input, option) => (option?.children ?? '').toLowerCase().includes(input.toLowerCase())}
+                  allowClear
+                >
+                  {assetOptions.map(opt => (
+                    <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -1137,6 +1183,24 @@ const Procure = () => {
               <Form.Item
                 name="received_date"
                 label="Received Date"
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      const requested = form.getFieldValue('requested_date');
+                      if (!value || !requested) return Promise.resolve();
+                      try {
+                        const recTs = new Date(value).setHours(0,0,0,0);
+                        const reqTs = new Date(requested).setHours(0,0,0,0);
+                        if (recTs < reqTs) {
+                          return Promise.reject(new Error('Received Date cannot be before Requested Date'));
+                        }
+                        return Promise.resolve();
+                      } catch (e) {
+                        return Promise.resolve();
+                      }
+                    }
+                  }
+                ]}
               >
                 <Input type="date" />
               </Form.Item>
@@ -1174,7 +1238,7 @@ const Procure = () => {
           {/* Buttons */}
           <Form.Item>
             <Space className="d-flex justify-content-end w-100">
-              <Button onClick={onReset} disabled={loading}>Reset</Button>
+              <Button onClick={() => setDrawerVisible(false)} disabled={loading}>Close</Button>
               <Button className="btn btn-success" htmlType="submit" loading={loading}>
                 {editingProcurement !== null ? 'Update Procurement' : 'Add Procurement'}
               </Button>
@@ -1193,7 +1257,7 @@ const Procure = () => {
         extra={
           <Space>
             <Button onClick={() => setBulkUploadDrawerVisible(false)}>
-              Cancel
+              Close
             </Button>
           </Space>
         }

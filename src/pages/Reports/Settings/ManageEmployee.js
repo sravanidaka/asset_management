@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Space, Drawer, Form, Input, Select, message, Modal, DatePicker } from 'antd';
-import { FaEdit, FaTrash, FaDownload } from 'react-icons/fa';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Drawer, Form, Input, Select, message, Modal, DatePicker, Upload } from 'antd';
+import { FaEdit, FaTrash, FaDownload, FaUpload } from 'react-icons/fa';
+import { PlusOutlined, SearchOutlined, DownloadOutlined, CloudDownloadOutlined, CloudUploadOutlined, FileTextOutlined, CheckCircleOutlined, InboxOutlined } from '@ant-design/icons';
 import CustomBreadcrumb from '../../../components/Breadcrumb';
 import BackNavigation from '../../../components/BackNavigation';
 import axios from 'axios';
@@ -19,6 +19,7 @@ const ManageEmployee = () => {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [form] = Form.useForm();
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [bulkUploadDrawerVisible, setBulkUploadDrawerVisible] = useState(false);
 
   // Fetch states from API
   const fetchStates = async () => {
@@ -420,6 +421,118 @@ const ManageEmployee = () => {
     document.body.removeChild(link);
   };
 
+  // Bulk upload functionality
+  const handleBulkUpload = async (file) => {
+    // Validate file type
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv', // .csv
+      'application/csv' // .csv alternative
+    ];
+    
+    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      message.error('❌ Only Excel (.xlsx, .xls) and CSV files are allowed');
+      return false;
+    }
+    
+    try {
+      setLoading(true);
+      message.loading("Uploading file...", 0);
+      
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+      
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      const response = await fetch("http://202.53.92.35:5004/api/settings/bulk-upload-employees", {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+          "x-access-token": token,
+        },
+        body: JSON.stringify({
+          excelFile: base64,
+          fileName: file.name
+        })
+      });
+      
+      const result = await response.json();
+      message.destroy();
+      
+      if (result.success) {
+        message.success(`✅ Bulk upload successful! ${result.imported || 0} employees imported.`);
+        await fetchEmployees(); // Refresh the table
+        setBulkUploadDrawerVisible(false);
+      } else {
+        message.error(`❌ Upload failed: ${result.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      message.destroy();
+      console.error("Bulk upload error:", error);
+      
+      if (error.response?.status === 400) {
+        message.error(`❌ Invalid file format: ${error.response.data.message || 'Please check your file format'}`);
+      } else if (error.response?.status === 500) {
+        message.error(`❌ Server error: ${error.response.data.message || 'Please try again later'}`);
+      } else {
+        message.error(`❌ Upload failed: ${error.message || 'Please check your connection'}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+    
+    return false; // Prevent default upload behavior
+  };
+
+  const uploadProps = {
+    name: 'file',
+    accept: '.xlsx,.xls,.csv',
+    beforeUpload: handleBulkUpload,
+    showUploadList: false,
+  };
+
+  // Download sample Excel template
+  const downloadSampleExcel = () => {
+    // Define field names only (no sample data)
+    const fieldNames = [
+      'First Name',
+      'Last Name', 
+      'Email',
+      'Phone',
+      'Department',
+      'Reported To',
+      'Role',
+      'District',
+      'State',
+      'Date of Joining (YYYY-MM-DD)',
+      'Status'
+    ];
+
+    // Create CSV content with headers only
+    const csvContent = fieldNames.join(',') + '\n';
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'employee_bulk_upload_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    message.success('✅ Excel template downloaded!');
+  };
+
   // Filter employees
   const filteredEmployees = employees.filter(employee => {
     const matchesStatus = selectedStatus === '' || employee.status === selectedStatus;
@@ -737,6 +850,14 @@ const ManageEmployee = () => {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div></div>
         <div className="d-flex gap-2">
+          <Button
+            type="default"
+            icon={<FaUpload />}
+            onClick={() => setBulkUploadDrawerVisible(true)}
+            style={{ fontWeight: '500' }}
+          >
+            Bulk Upload
+          </Button>
           <Button 
             type="primary"
             icon={<PlusOutlined />}
@@ -802,7 +923,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
               <Form.Item
                 name="first_name"
-                label="First Name"
+                label={<span>First Name <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please enter first name' }]}
               >
                 <Input placeholder="Enter first name" />
@@ -811,7 +932,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="last_name"
-                label="Last Name"
+                label={<span>Last Name <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please enter last name' }]}
               >
                 <Input placeholder="Enter last name" />
@@ -823,7 +944,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="email"
-                label="Email"
+                label={<span>Email <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: 'Please enter email' },
                   { type: 'email', message: 'Please enter a valid email' }
@@ -835,7 +956,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="phone"
-                label="Phone"
+                label={<span>Phone <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please enter phone number' }]}
               >
                 <Input placeholder="Enter phone number" />
@@ -847,7 +968,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="department"
-                label="Department"
+                label={<span>Department <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please enter department' }]}
               >
                 <Input placeholder="Enter department" />
@@ -856,7 +977,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="reported_to"
-                label="Reported To"
+                label={<span>Reported To <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please enter reported to' }]}
               >
                 <Input placeholder="Enter reported to" />
@@ -868,7 +989,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="state"
-                label="State"
+                label={<span>State <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please select state' }]}
               >
                 <Select
@@ -891,7 +1012,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="district"
-                label="District"
+                label={<span>District <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please select district' }]}
               >
                 <Select
@@ -917,7 +1038,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="role"
-                label="Role"
+                label={<span>Role <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please select a role' }]}
               >
                 <Select
@@ -940,7 +1061,7 @@ const ManageEmployee = () => {
             <div className="col-md-6">
           <Form.Item
                 name="date_of_joining"
-                label="Date of Joining"
+                label={<span>Date of Joining <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: 'Please select date of joining' }]}
               >
                 <DatePicker 
@@ -985,6 +1106,116 @@ const ManageEmployee = () => {
               </Button>
           </div>
         </Form>
+      </Drawer>
+
+      {/* Bulk Upload Drawer */}
+      <Drawer
+        title="Bulk Upload Employees"
+        width={600}
+        onClose={() => setBulkUploadDrawerVisible(false)}
+        open={bulkUploadDrawerVisible}
+        styles={{ body: { paddingBottom: 80 } }}
+        extra={
+          <Space>
+            <Button onClick={() => setBulkUploadDrawerVisible(false)}>
+              Close
+            </Button>
+          </Space>
+        }
+      >
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileTextOutlined /> Important Fields Instructions
+          </h4>
+          <div style={{ 
+            background: '#f6ffed', 
+            border: '1px solid #b7eb8f', 
+            borderRadius: '6px', 
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <h5 style={{ color: '#52c41a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircleOutlined /> Required Fields (Must be filled):
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li><strong>First Name</strong> - Employee's first name</li>
+              <li><strong>Last Name</strong> - Employee's last name</li>
+              <li><strong>Email</strong> - Valid email address</li>
+              <li><strong>Phone</strong> - Phone number</li>
+              <li><strong>Department</strong> - Employee's department</li>
+              <li><strong>Reported To</strong> - Manager or supervisor name</li>
+              <li><strong>Role</strong> - Employee's role (must match existing roles)</li>
+              <li><strong>District</strong> - District name (must match existing districts)</li>
+              <li><strong>State</strong> - State name (must match existing states)</li>
+              <li><strong>Date of Joining</strong> - Date in YYYY-MM-DD format</li>
+            </ul>
+          </div>
+          
+          <div style={{ 
+            background: '#fff7e6', 
+            border: '1px solid #ffd591', 
+            borderRadius: '6px', 
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <h5 style={{ color: '#fa8c16', marginBottom: '12px' }}>
+              ⚠️ Important Notes:
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li>Date format must be YYYY-MM-DD (e.g., 2024-01-15)</li>
+              <li>Status field is optional (defaults to "Active")</li>
+              <li>Email addresses must be unique</li>
+              <li>Phone numbers must be unique</li>
+              <li>Role, District, and State must match existing values in the system</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudDownloadOutlined /> Download Sample Template
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Download the sample Excel template to see the correct format and required fields.
+          </p>
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={downloadSampleExcel}
+            style={{ marginBottom: '16px' }}
+          >
+            Download Sample Excel Template
+          </Button>
+        </div>
+
+        <div>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudUploadOutlined /> Upload Your File
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Select your Excel or CSV file to upload. The system will validate the data and import the employees.
+          </p>
+          <Upload.Dragger
+            {...uploadProps}
+            style={{ 
+              background: '#fafafa',
+              border: '2px dashed #d9d9d9',
+              borderRadius: '6px'
+            }}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            </p>
+            <p className="ant-upload-text" style={{ fontSize: '16px', fontWeight: '500' }}>
+              Click or drag file to this area to upload
+            </p>
+            <p className="ant-upload-hint" style={{ color: '#666' }}>
+              Support for Excel (.xlsx, .xls) and CSV files. Maximum file size: 10MB.
+              <br />
+              Make sure your file follows the sample template format.
+            </p>
+          </Upload.Dragger>
+        </div>
       </Drawer>
     </div>
   );

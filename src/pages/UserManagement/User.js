@@ -16,8 +16,10 @@ import {
   message,
   Popconfirm,
   Table,
+  Upload,
 } from "antd";
-import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import { SearchOutlined, PlusOutlined, DownloadOutlined, CloudDownloadOutlined, CloudUploadOutlined, FileTextOutlined, CheckCircleOutlined, InboxOutlined } from "@ant-design/icons";
+import { FaUpload } from "react-icons/fa";
 import { api } from '../../config/api';
 import ExportButton from '../../components/ExportButton';
 import { safeStringCompare } from '../../utils/tableUtils';
@@ -35,6 +37,7 @@ const User = () => {
     current: 1,
     pageSize: 10,
   });
+  const [bulkUploadDrawerVisible, setBulkUploadDrawerVisible] = useState(false);
 
   // Fetch Users
   const fetchUsers = async () => {
@@ -309,13 +312,13 @@ const User = () => {
         return (current - 1) * pageSize + index + 1;
       },
     },
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      sorter: (a, b) => a.id - b.id,
-      ...getColumnSearchProps('id'),
-    },
+    // {
+    //   title: "ID",
+    //   dataIndex: "id",
+    //   key: "id",
+    //   sorter: (a, b) => a.id - b.id,
+    //   ...getColumnSearchProps('id'),
+    // },
     {
       title: "Name",
       dataIndex: "name",
@@ -535,6 +538,113 @@ const User = () => {
     }
   };
 
+  // Bulk upload functionality
+  const handleBulkUpload = async (file) => {
+    // Validate file type
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv', // .csv
+      'application/csv' // .csv alternative
+    ];
+    
+    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      message.error('❌ Only Excel (.xlsx, .xls) and CSV files are allowed');
+      return false;
+    }
+    
+    try {
+      setLoading(true);
+      message.loading("Uploading file...", 0);
+      
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+      
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      const response = await fetch("http://202.53.92.35:5004/api/users/bulk-upload", {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+          "x-access-token": token,
+        },
+        body: JSON.stringify({
+          excelFile: base64,
+          fileName: file.name
+        })
+      });
+      
+      const result = await response.json();
+      message.destroy();
+      
+      if (result.success) {
+        message.success(`✅ Bulk upload successful! ${result.imported || 0} users imported.`);
+        await fetchUsers(); // Refresh the table
+        setBulkUploadDrawerVisible(false);
+      } else {
+        message.error(`❌ Upload failed: ${result.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      message.destroy();
+      console.error("Bulk upload error:", error);
+      
+      if (error.response?.status === 400) {
+        message.error(`❌ Invalid file format: ${error.response.data.message || 'Please check your file format'}`);
+      } else if (error.response?.status === 500) {
+        message.error(`❌ Server error: ${error.response.data.message || 'Please try again later'}`);
+      } else {
+        message.error(`❌ Upload failed: ${error.message || 'Please check your connection'}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+    
+    return false; // Prevent default upload behavior
+  };
+
+  const uploadProps = {
+    name: 'file',
+    accept: '.xlsx,.xls,.csv',
+    beforeUpload: handleBulkUpload,
+    showUploadList: false,
+  };
+
+  // Download sample Excel template
+  const downloadSampleExcel = () => {
+    // Define field names only (no sample data)
+    const fieldNames = [
+      'Username',
+      'Email',
+      'Phone',
+      'Password',
+      'Role',
+      'Status'
+    ];
+
+    // Create CSV content with headers only
+    const csvContent = fieldNames.join(',') + '\n';
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'user_bulk_upload_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    message.success('✅ Excel template downloaded!');
+  };
+
   return (
       <div className="container-fluid p-1">
         {/* Top Navigation Bar - Breadcrumb Only */}
@@ -549,6 +659,14 @@ const User = () => {
             <p className="mt-0">Control access to asset screens and actions.</p>
           </div>
           <div className="d-flex align-items-center gap-2">
+            <Button
+              type="default"
+              icon={<FaUpload />}
+              onClick={() => setBulkUploadDrawerVisible(true)}
+              style={{ fontWeight: '500' }}
+            >
+              Bulk Upload
+            </Button>
             <ExportButton
               data={users}
               columns={columns}
@@ -596,18 +714,6 @@ const User = () => {
         onClose={onClose}
         open={open}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button
-              className="btn-add"
-              type="primary"
-              onClick={() => form.submit()}
-            >
-              {editingUser ? "Update" : "Submit"}
-            </Button>
-          </Space>
-        }
       >
         <Form
           layout="vertical"
@@ -620,7 +726,7 @@ const User = () => {
             <Col span={24}>
               <Form.Item
                 name="name"
-                label="Username"
+                label={<span>Username <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please enter username" },
                   {
@@ -640,7 +746,7 @@ const User = () => {
             <Col span={24}>
               <Form.Item
                 name="email"
-                label="Email"
+                label={<span>Email <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please enter email" },
                   {
@@ -659,7 +765,7 @@ const User = () => {
             <Col span={24}>
               <Form.Item
                 name="phone"
-                label="Phone"
+                label={<span>Phone <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please enter phone" },
                   {
@@ -674,30 +780,14 @@ const User = () => {
           </Row>
 
           {/* Password - Required for new users, optional for editing */}
-          <Row gutter={16}>
-            <Col span={24}>
-              <Form.Item
-                name="password"
-                label={editingUser ? "New Password (optional)" : "Password"}
-                rules={[
-                  { required: !editingUser, message: "Please enter password" },
-                  {
-                    min: 6,
-                    message: "Password must be at least 6 characters long",
-                  },
-                ]}
-              >
-                <Input.Password placeholder={editingUser ? "Enter new password (leave blank to keep current)" : "Enter password"} />
-              </Form.Item>
-            </Col>
-          </Row>
+
 
           {/* Role */}
           <Row gutter={16}>
             <Col span={24}>
               <Form.Item
                 name="role_id"
-                label="Role"
+                label={<span>Role <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: "Please select role" }]}
               >
                 <Select placeholder="Select role">
@@ -716,7 +806,7 @@ const User = () => {
             <Col span={24}>
               <Form.Item
                 name="status"
-                label="Status"
+                label={<span>Status <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: "Please select status" }]}
               >
                 <Select placeholder="Select status">
@@ -727,9 +817,123 @@ const User = () => {
               </Form.Item>
             </Col>
           </Row>
-
-
+          {/* Footer buttons */}
+          <Form.Item>
+            <Space className="d-flex justify-content-end w-100">
+              <Button size="small" onClick={onClose}>Close</Button>
+              <Button size="small" type="primary" htmlType="submit">
+                {editingUser ? "Update" : "Submit"}
+              </Button>
+            </Space>
+          </Form.Item>
         </Form>
+      </Drawer>
+
+      {/* Bulk Upload Drawer */}
+      <Drawer
+        title="Bulk Upload Users"
+        width={600}
+        onClose={() => setBulkUploadDrawerVisible(false)}
+        open={bulkUploadDrawerVisible}
+        styles={{ body: { paddingBottom: 80 } }}
+        extra={
+          <Space>
+            <Button onClick={() => setBulkUploadDrawerVisible(false)}>
+              Cancel
+            </Button>
+          </Space>
+        }
+      >
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileTextOutlined /> Important Fields Instructions
+          </h4>
+          <div style={{ 
+            background: '#f6ffed', 
+            border: '1px solid #b7eb8f', 
+            borderRadius: '6px', 
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <h5 style={{ color: '#52c41a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircleOutlined /> Required Fields (Must be filled):
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li><strong>Username</strong> - User's username (alphabets only, no spaces)</li>
+              <li><strong>Email</strong> - Valid email address (must be unique)</li>
+              <li><strong>Phone</strong> - Phone number (numbers only, must be unique)</li>
+              <li><strong>Password</strong> - User's password</li>
+              <li><strong>Role</strong> - User's role (must match existing roles)</li>
+              <li><strong>Status</strong> - User status (Active, Pending, or Inactive)</li>
+            </ul>
+          </div>
+          
+          <div style={{ 
+            background: '#fff7e6', 
+            border: '1px solid #ffd591', 
+            borderRadius: '6px', 
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <h5 style={{ color: '#fa8c16', marginBottom: '12px' }}>
+              ⚠️ Important Notes:
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li>Username must contain only alphabets (no spaces or special characters)</li>
+              <li>Email addresses must be unique across all users</li>
+              <li>Phone numbers must be unique across all users</li>
+              <li>Role must match existing roles in the system</li>
+              <li>Status must be one of: Active, Pending, or Inactive</li>
+              <li>Password will be encrypted automatically</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudDownloadOutlined /> Download Sample Template
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Download the sample Excel template to see the correct format and required fields.
+          </p>
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={downloadSampleExcel}
+            style={{ marginBottom: '16px' }}
+          >
+            Download Sample Excel Template
+          </Button>
+        </div>
+
+        <div>
+          <h4 style={{ color: '#1890ff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CloudUploadOutlined /> Upload Your File
+          </h4>
+          <p style={{ color: '#666', marginBottom: '16px' }}>
+            Select your Excel or CSV file to upload. The system will validate the data and import the users.
+          </p>
+          <Upload.Dragger
+            {...uploadProps}
+            style={{ 
+              background: '#fafafa',
+              border: '2px dashed #d9d9d9',
+              borderRadius: '6px'
+            }}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            </p>
+            <p className="ant-upload-text" style={{ fontSize: '16px', fontWeight: '500' }}>
+              Click or drag file to this area to upload
+            </p>
+            <p className="ant-upload-hint" style={{ color: '#666' }}>
+              Support for Excel (.xlsx, .xls) and CSV files. Maximum file size: 10MB.
+              <br />
+              Make sure your file follows the sample template format.
+            </p>
+          </Upload.Dragger>
+        </div>
       </Drawer>
     </div>
   );

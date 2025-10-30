@@ -19,7 +19,8 @@ import {
   Button,
   Badge,
   Avatar,
-  Skeleton
+  Skeleton,
+  Table
 } from "antd";
 import { 
   CalendarOutlined, 
@@ -36,20 +37,27 @@ import {
   InfoCircleOutlined,
   BookOutlined,
   BankOutlined,
-  GlobalOutlined
+  GlobalOutlined,
+  ArrowLeftOutlined
 } from "@ant-design/icons";
-import axios from "axios";
+import { useParams, useNavigate } from 'react-router-dom';
+import { safeStringCompare } from '../../utils/tableUtils';
 
 const { Title, Text } = Typography;
 const { Step } = Steps;
 
 const AssetHistoryDetail = () => {
+  const { assetId } = useParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [assetDetails, setAssetDetails] = useState(null);
   const [financialDetails, setFinancialDetails] = useState(null);
   const [assetTransfers, setAssetTransfers] = useState([]);
   const [assetAllocations, setAssetAllocations] = useState([]);
-  const [assetId, setAssetId] = useState(null);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+  });
 
   // Add CSS animations
   React.useEffect(() => {
@@ -136,72 +144,155 @@ const AssetHistoryDetail = () => {
   }, []);
 
   useEffect(() => {
-    // Extract asset ID from URL
-    const pathParts = window.location.pathname.split('/');
-    const id = pathParts[pathParts.length - 1];
-    console.log('Extracted asset ID from URL:', id);
-    setAssetId(id);
+    console.log('Asset ID from URL params:', assetId);
     
-    if (id && id !== 'asset-history-detail') {
-      fetchAssetHistory(id);
+    if (assetId && assetId !== 'asset-history-detail') {
+      fetchAssetDetails(assetId);
+      fetchAssetAllocations(assetId);
     } else {
-      console.error('Invalid asset ID:', id);
+      console.error('Invalid asset ID:', assetId);
       message.error('Invalid asset ID provided');
     }
-  }, []);
+  }, [assetId]);
 
-  const fetchAssetHistory = async (assetId) => {
+  const fetchAssetDetails = async (assetId) => {
     setLoading(true);
     try {
-      // Fetch comprehensive asset history using the new API
-      const historyResponse = await axios.get(`http://202.53.92.35:5004/api/assets/history/${assetId}`, {
+      console.log(`Fetching asset details for asset ID: ${assetId}`);
+      const response = await fetch(`http://202.53.92.35:5004/api/assets`, {
+        method: 'GET',
         headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
           "x-access-token": sessionStorage.getItem("token"),
         }
       });
 
-      if (historyResponse.data?.success && historyResponse.data?.data?.length > 0) {
-        const historyData = historyResponse.data.data[0];
-        
-        // Debug: Log the received data to understand the structure
-        console.log('Asset History Data:', historyData);
-        console.log('Asset assigned_user:', historyData.asset?.assigned_user);
-        console.log('Asset Allocations:', historyData.asset_allocated);
-        
-        // Set asset details from the new API structure
-        setAssetDetails(historyData.asset);
-        setAssetTransfers(historyData.asset_transfer || []);
-        setAssetAllocations(historyData.asset_allocated || []);
-        
-        // Still fetch financial details separately as they might not be in the history API
-        try {
-          const financialResponse = await axios.get(`http://202.53.92.35:5004/api/assets/financial`, {
-            headers: {
-              "x-access-token": sessionStorage.getItem("token"),
-            }
-          });
+      console.log('API Response status:', response.status);
+      const result = await response.json();
+      console.log('Assets API Response:', result);
 
-          // Find financial record for this asset
-          const financialRecord = financialResponse.data?.find(record => 
-            record.asset_id == assetId
-          ) || financialResponse.data?.data?.find(record => 
-            record.asset_id == assetId
-          );
-          
-          setFinancialDetails(financialRecord);
-        } catch (financialError) {
-          console.warn("Could not fetch financial details:", financialError);
-          setFinancialDetails(null);
-        }
+      // Normalize to array of assets
+      let assets = [];
+      if (Array.isArray(result)) {
+        assets = result;
+      } else if (result.assets && Array.isArray(result.assets)) {
+        assets = result.assets;
+      } else if (result.data && Array.isArray(result.data)) {
+        assets = result.data;
+      } else if (result.items && Array.isArray(result.items)) {
+        assets = result.items;
       } else {
-        throw new Error("No asset history data found");
+        console.error("Unexpected Assets API response structure:", result);
+        assets = [];
       }
-      
+
+      // Find matching asset
+      const asset = assets.find(a => String(a.asset_id) === String(assetId));
+      if (!asset) {
+        setAssetDetails(null);
+        message.warning('Asset not found');
+        return;
+      }
+
+      setAssetDetails(asset);
+      console.log('Set asset details:', asset);
+
+      // Optionally, if you have allocation/transfer endpoints, fetch them here.
+      setAssetAllocations([]);
+      setAssetTransfers([]);
     } catch (error) {
-      console.error("Error fetching asset history:", error);
-      message.error("Failed to load asset history details");
+      console.error("Error fetching asset details:", error);
+      message.error("Failed to load asset details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAssetAllocations = async (assetId) => {
+    try {
+      console.log(`Fetching asset allocations for asset ID: ${assetId}`);
+      // Try querying with server-side filter first
+      let response = await fetch(`http://202.53.92.35:5004/api/assets/allocate?asset_id=${encodeURIComponent(assetId)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          "x-access-token": sessionStorage.getItem("token"),
+        }
+      });
+
+      console.log('Allocations API Response status:', response.status);
+      let result = await response.json();
+      console.log('Allocations API Response:', result);
+
+      let items = [];
+      if (Array.isArray(result)) {
+        items = result;
+      } else if (result.allocations && Array.isArray(result.allocations)) {
+        items = result.allocations;
+      } else if (result.data && Array.isArray(result.data)) {
+        items = result.data;
+      } else if (result.records && Array.isArray(result.records)) {
+        items = result.records;
+      } else if (result.items && Array.isArray(result.items)) {
+        items = result.items;
+      } else {
+        // If first attempt returns no recognizable array, try the unfiltered endpoint as a fallback
+        console.warn("Unrecognized or empty shape from filtered endpoint, retrying unfiltered allocations...");
+        response = await fetch(`http://202.53.92.35:5004/api/assets/allocate`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            "x-access-token": sessionStorage.getItem("token"),
+          }
+        });
+        console.log('Allocations (fallback) API Response status:', response.status);
+        result = await response.json();
+        console.log('Allocations (fallback) API Response:', result);
+        if (Array.isArray(result)) items = result;
+        else if (result.allocations && Array.isArray(result.allocations)) items = result.allocations;
+        else if (result.data && Array.isArray(result.data)) items = result.data;
+        else if (result.records && Array.isArray(result.records)) items = result.records;
+        else if (result.items && Array.isArray(result.items)) items = result.items;
+        else items = [];
+      }
+
+      const filtered = items.filter(i => String(i.asset_id) === String(assetId));
+      const withKeys = filtered.map((item, index) => ({
+        ...item,
+        key: item.id || index.toString(),
+      }));
+
+      // Last resort: if still empty, synthesize a single row from assetDetails so the table shows something
+      if (withKeys.length === 0 && assetDetails) {
+        const synthetic = [{
+          key: `synthetic-${assetId}`,
+          asset_id: assetId,
+          assignment_date: assetDetails.installation_date || assetDetails.created_at,
+          assignment_type: 'Registration',
+          assigned_to: assetDetails.assigned_user,
+          assigned_by: assetDetails.created_by || 'System',
+          company: assetDetails.company || '-',
+          location: assetDetails.location,
+          product: assetDetails.asset_name,
+          assignment_notes: 'Initial registration',
+          condition_at_issue: '-',
+          generated_asset_id: assetDetails.asset_code || '-',
+          created_at: assetDetails.created_at,
+        }];
+        setAssetAllocations(synthetic);
+        console.log('No allocation rows found; showing synthetic registration row.');
+      } else {
+        setAssetAllocations(withKeys);
+        console.log(`Loaded ${withKeys.length} allocation records for asset ${assetId}`);
+      }
+    } catch (error) {
+      console.error('Error fetching allocations:', error);
     }
   };
 
@@ -337,6 +428,152 @@ const AssetHistoryDetail = () => {
           </Space>
         </div>
       </Card>
+
+      {/* Asset History Table */}
+      {/* <Card className="mb-4 fade-in-up" style={{ borderRadius: "12px" }}>
+        <div className="mb-4">
+          <Title level={4} style={{ color: "#1890ff", marginBottom: "16px" }}>
+            <HistoryOutlined className="me-2" />
+            Asset History Details
+          </Title>
+        </div>
+        <Table
+          columns={[
+            {
+              title: "S.No",
+              key: "serial",
+              width: 80,
+              render: (text, record, index) => {
+                const current = pagination.current || 1;
+                const pageSize = pagination.pageSize || 10;
+                return (current - 1) * pageSize + index + 1;
+              },
+            },
+            {
+              title: "Assignment Date",
+              dataIndex: "assignment_date",
+              key: "assignment_date",
+              width: 150,
+              sorter: (a, b) => safeStringCompare(a.assignment_date || a.allocation_date || a.created_at, b.assignment_date || b.allocation_date || b.created_at),
+              render: (text, record) => {
+                const value = text || record.allocation_date || record.created_at;
+                if (!value) return '-';
+                try {
+                  const date = new Date(value);
+                  return date.toLocaleDateString('en-GB');
+                } catch (error) {
+                  return value;
+                }
+              },
+            },
+            {
+              title: "Assignment Type",
+              dataIndex: "assignment_type",
+              key: "assignment_type",
+              width: 130,
+              sorter: (a, b) => safeStringCompare(a.assignment_type, b.assignment_type),
+              render: (text) => {
+                if (!text) return '-';
+                const color = text === 'Temporary' ? 'orange' : text === 'Project' ? 'blue' : 'green';
+                return <Tag color={color}>{text}</Tag>;
+              },
+            },
+            {
+              title: "Assigned To",
+              dataIndex: "assigned_to",
+              key: "assigned_to",
+              width: 120,
+              sorter: (a, b) => safeStringCompare(a.assigned_to, b.assigned_to),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Assigned By",
+              dataIndex: "assigned_by",
+              key: "assigned_by",
+              width: 120,
+              sorter: (a, b) => safeStringCompare(a.assigned_by, b.assigned_by),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Company",
+              dataIndex: "company",
+              key: "company",
+              width: 120,
+              sorter: (a, b) => safeStringCompare(a.company, b.company),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Location",
+              dataIndex: "location",
+              key: "location",
+              width: 120,
+              sorter: (a, b) => safeStringCompare(a.location, b.location),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Product",
+              dataIndex: "product",
+              key: "product",
+              width: 120,
+              sorter: (a, b) => safeStringCompare(a.product, b.product),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Assignment Notes",
+              dataIndex: "assignment_notes",
+              key: "assignment_notes",
+              width: 150,
+              sorter: (a, b) => safeStringCompare(a.assignment_notes, b.assignment_notes),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Condition at Issue",
+              dataIndex: "condition_at_issue",
+              key: "condition_at_issue",
+              width: 150,
+              sorter: (a, b) => safeStringCompare(a.condition_at_issue, b.condition_at_issue),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Generated Asset ID",
+              dataIndex: "generated_asset_id",
+              key: "generated_asset_id",
+              width: 150,
+              sorter: (a, b) => safeStringCompare(a.generated_asset_id, b.generated_asset_id),
+              render: (text) => text || '-',
+            },
+            {
+              title: "Created At",
+              dataIndex: "created_at",
+              key: "created_at",
+              width: 150,
+              sorter: (a, b) => safeStringCompare(a.created_at, b.created_at),
+              render: (text) => {
+                if (!text) return '-';
+                try {
+                  const date = new Date(text);
+                  return date.toLocaleDateString('en-GB') + ' ' + date.toLocaleTimeString('en-GB');
+                } catch (error) {
+                  return text;
+                }
+              },
+            },
+          ]}
+          dataSource={assetAllocations}
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize: pageSize || 10 }),
+          }}
+          bordered
+          size="middle"
+          scroll={{ x: 1500 }}
+        />
+      </Card> */}
 
       {/* Steps Timeline */}
       <Card className="mb-4 fade-in-up" style={{ borderRadius: "12px" }}>

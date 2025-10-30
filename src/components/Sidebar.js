@@ -67,7 +67,7 @@ function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true, co
       items: [
         { key: 'user', label: 'User', icon: FaUsers },
         { key: 'roles', label: 'Roles', icon: FaUserShield },
-        { key: 'module', label: 'Module', icon: FaCog },
+        // { key: 'module', label: 'Module', icon: FaCog },
       ]
     }
   ];

@@ -50,12 +50,41 @@ const makeApiCall = async (endpoint) => {
       console.log(`📊 Found generated_codes array with ${data.length} items`);
     } else if (result.data && Array.isArray(result.data)) {
       data = result.data;
+    } else if (result.data && typeof result.data === 'object') {
+      // Handle nested arrays under data
+      const nested = result.data;
+      if (Array.isArray(nested.items)) {
+        data = nested.items;
+      } else if (Array.isArray(nested.result)) {
+        data = nested.result;
+      } else if (Array.isArray(nested.employees)) {
+        data = nested.employees;
+      } else if (Array.isArray(nested.employeeList)) {
+        data = nested.employeeList;
+      } else if (Array.isArray(nested.employeesList)) {
+        data = nested.employeesList;
+      } else if (Array.isArray(nested.employee_list)) {
+        data = nested.employee_list;
+      } else if (Array.isArray(nested.employees_list)) {
+        data = nested.employees_list;
+      }
     } else if (result.success && Array.isArray(result.data)) {
       data = result.data;
     } else if (result.result && Array.isArray(result.result)) {
       data = result.result;
     } else if (result.items && Array.isArray(result.items)) {
       data = result.items;
+    } else if (result.employees && Array.isArray(result.employees)) {
+      // Handle employees list shape
+      data = result.employees;
+    } else if (result.employeesList && Array.isArray(result.employeesList)) {
+      data = result.employeesList;
+    } else if (result.employeeList && Array.isArray(result.employeeList)) {
+      data = result.employeeList;
+    } else if (result.employees_list && Array.isArray(result.employees_list)) {
+      data = result.employees_list;
+    } else if (result.employee_list && Array.isArray(result.employee_list)) {
+      data = result.employee_list;
     } else {
       console.warn(`Unexpected response structure for ${endpoint}:`, result);
       data = [];
@@ -121,7 +150,7 @@ export const getStatusTypes = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/settings/getStatusTypesDropdown');
-  
+
   // Transform data to standard format
   const transformedData = data.map(item => ({
     value: item.status_type || item.id || item.value || item.name,
@@ -147,13 +176,13 @@ export const getStatusNames = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/settings/getStatusNamesDropdown');
-  
+
   // Transform data to standard format - ID as value, name as label
   const transformedData = data.map(item => {
     // Extract ID and name from various possible field names
     const id = item.id || item.status_name_id || item.value;
     const name = item.status_name || item.name || item.label;
-    
+
     return {
       value: id, // Use ID as value for form submission
       label: name, // Use name as display label
@@ -180,13 +209,13 @@ export const getCategories = async (useCache = false) => { // Force fresh fetch 
   }
 
   const data = await makeApiCall('/settings/getCategoriesDropdown');
-  
+
   // Transform data to standard format - ID as value, name as label
   const transformedData = data.map(item => {
     // Extract ID and name from various possible field names
     const id = item.id || item.category_id || item.value;
     const name = item.category_name || item.name || item.label;
-    
+
     return {
       value: id, // Use ID as value for form submission
       label: name, // Use name as display label
@@ -213,13 +242,13 @@ export const getLocations = async (useCache = false) => { // Force fresh fetch t
   }
 
   const data = await makeApiCall('/settings/getLocationsDropdown');
-  
+
   // Transform data to standard format - ID as value, name as label
   const transformedData = data.map(item => {
     // Extract ID and name from various possible field names
     const id = item.id || item.location_id || item.value;
     const name = item.location_name || item.name || item.label;
-    
+
     return {
       value: id, // Use ID as value for form submission
       label: name, // Use name as display label
@@ -246,7 +275,7 @@ export const getLocationTypes = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/settings/getLocationTypesDropdown');
-  
+
   // Transform data to standard format
   const transformedData = data.map(item => ({
     value: item.location_type || item.type || item.name || item.id || item.value,
@@ -272,7 +301,7 @@ export const getLocationNames = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/settings/getLocationNamesDropdown');
-  
+
   // Transform data to standard format
   const transformedData = data.map(item => ({
     value: item.location_name || item.name || item.id || item.value,
@@ -298,13 +327,13 @@ export const getVendorNames = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/settings/getVendorNamesDropdown');
-  
+
   // Transform data to standard format - ID as value, name as label
   const transformedData = data.map(item => {
     // Extract ID and name from various possible field names
     const id = item.id || item.vendor_id || item.value;
     const name = item.vendor_name || item.name || item.label;
-    
+
     return {
       value: id, // Use ID as value for form submission
       label: name, // Use name as display label
@@ -331,7 +360,7 @@ export const getAssetNames = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/assets/dropdown/asset-names');
-  
+
   // Transform data to standard format
   const transformedData = data.map(item => ({
     value: item.asset_name || item.name || item.id || item.value,
@@ -354,32 +383,32 @@ export const getAssetNames = async (useCache = true) => {
 export const getAssetIds = async (useCache = false) => {
   // Force fresh fetch for debugging
   console.log('🔄 Force fetching fresh asset IDs from /assets/generated-codes API...');
-  
+
   // Clear cache to ensure fresh data
   dropdownCache.assetIds = null;
 
   console.log('Fetching asset IDs from /assets/generated-codes API...');
   const data = await makeApiCall('/assets/generated-codes');
   console.log('📊 Processed asset IDs data:', data);
-  
+
   // Transform data to standard format
   const transformedData = data.map((item, index) => {
     const assetId = item.generated_asset_id || item.asset_id || item.id;
     const displayId = assetId ? assetId.toString() : assetId;
-    
+
     console.log(`🔍 Processing item ${index}:`, {
       original: item,
       assetId: assetId,
       displayId: displayId
     });
-    
+
     const result = {
       value: displayId,
       label: displayId,
       id: item.allocation_id || item.id || item.asset_id, // Use allocation_id for unique keys
       ...item
     };
-    
+
     console.log(`🎯 Transformed item ${index}:`, result);
     return result;
   });
@@ -402,13 +431,13 @@ export const getAssetIdsDropdown = async (useCache = false) => {
   console.log('🔄 Fetching fresh asset IDs from /assets/dropdown/asset-ids API...');
   const data = await makeApiCall('/assets/dropdown/asset-ids');
   console.log('📊 Raw asset IDs dropdown data:', data);
-  
+
   // Transform data to standard format - remove ASSET- prefix if it exists
   const transformedData = data.map(item => {
     const rawAssetId = item.asset_id || item.id || item.value;
     console.log('🔍 Processing item:', item);
     console.log('🔍 Raw asset ID:', rawAssetId, 'Type:', typeof rawAssetId);
-    
+
     // Remove ASSET- prefix if it exists
     let displayAssetId = rawAssetId;
     if (rawAssetId && typeof rawAssetId === 'string') {
@@ -419,14 +448,14 @@ export const getAssetIdsDropdown = async (useCache = false) => {
         console.log('✅ No ASSET- prefix found, keeping as is:', displayAssetId);
       }
     }
-    
+
     const result = {
       ...item, // Spread original item first
       value: displayAssetId, // Override with cleaned value
       label: displayAssetId, // Override with cleaned label
       id: item.id || item.asset_id
     };
-    
+
     console.log('🎯 Final transformed item:', result);
     return result;
   });
@@ -445,31 +474,26 @@ export const getAssetIdsDropdown = async (useCache = false) => {
  * Get employee list for approver dropdown
  */
 export const getEmployeeList = async (useCache = false) => {
-  console.log('🔄 Fetching employee list from /settings/getEmployeeList API...');
-  const data = await makeApiCall('/settings/getEmployeeList');
+  console.log('🔄 Fetching employee list from /settings/getEmployeesList API...');
+  const data = await makeApiCall('/settings/getEmployeesList');
   console.log('📊 Raw employee list data:', data);
 
-  const transformedData = data.map(item => {
-    // Extract first and last name to create full name
-    const firstName = item.first_name || '';
-    const lastName = item.last_name || '';
-    const fullName = `${firstName} ${lastName}`.trim();
-    
-    // Fallback to other name fields if first/last name not available
-    const employeeName = fullName || item.name || item.employee_name || item.full_name || item.value;
-    const employeeId = item.employee_id || item.id || item.value;
-    
-    console.log('🔍 Processing employee:', item);
-    console.log('🔍 Employee name:', employeeName, 'Employee ID:', employeeId);
+  const transformedData = (Array.isArray(data) ? data : []).map(item => {
+    // Extract name with robust fallbacks
+    const firstName = item.first_name || item.firstname || item.firstName || '';
+    const lastName = item.last_name || item.lastname || item.lastName || '';
+    const combined = `${firstName} ${lastName}`.trim();
+    const employeeName = combined || item.employee_name || item.full_name || item.fullName || item.name || item.username || item.label || String(item.value || '').trim();
+
+    // Extract ID with robust fallbacks
+    const employeeId = item.employee_id || item.emp_id || item.user_id || item.id || item.value;
 
     const result = {
-      ...item, // Spread original item first
-      value: employeeName, // Use name as value
-      label: employeeName, // Use name as label
-      id: employeeId
+      ...item,
+      value: employeeId || employeeName,
+      label: employeeName || String(employeeId || ''),
+      id: employeeId || employeeName
     };
-
-    console.log('🎯 Final transformed employee:', result);
     return result;
   });
 
@@ -483,6 +507,64 @@ export const getEmployeeList = async (useCache = false) => {
 };
 
 /**
+ * Get employee names dropdown (ID + Name) for approver selection
+ */
+export const getEmployeeNamesDropdown = async (useCache = false) => {
+  console.log('🔄 Fetching employee names from /settings/getEmployeeNamesDropdown API...');
+  const data = await makeApiCall('/settings/getEmployeeNamesDropdown');
+  console.log('📊 Raw employee names data:', data);
+
+  const transformedData = (Array.isArray(data) ? data : []).map(item => {
+    // If API returns an array of strings, map directly
+    if (typeof item === 'string') {
+      const nameStr = item.trim();
+      return { id: nameStr, value: nameStr, label: nameStr };
+    }
+    if (typeof item === 'number') {
+      // Not ideal, but keep number as both id and label if no name provided
+      const asString = String(item);
+      return { id: asString, value: asString, label: asString };
+    }
+    // Prefer explicit name fields, fallback to first/last
+    const firstName = item.first_name || item.firstname || item.firstName || '';
+    const lastName = item.last_name || item.lastname || item.lastName || '';
+    const combined = `${firstName} ${lastName}`.trim();
+    const name = item.employee_name || item.full_name || item.fullName || item.name || combined || String(item.label || item.value || '').trim();
+
+    const id = item.id || item.employee_id || item.emp_id || item.user_id || item.value;
+
+    return {
+      ...item,
+      value: id,
+      label: name,
+      id
+    };
+  });
+
+  return transformedData;
+};
+
+/**
+ * Get employee IDs dropdown used for Transfer ID selection
+ */
+export const getEmployeeIdsDropdown = async (useCache = false) => {
+  console.log('🔄 Fetching employee IDs from /settings/getEmployeeIdsDropdown API...');
+  const data = await makeApiCall('/settings/getEmployeeIdsDropdown');
+  console.log('📊 Raw employee IDs data:', data);
+
+  const transformed = (Array.isArray(data) ? data : []).map((item, index) => {
+    if (typeof item === 'string' || typeof item === 'number') {
+      const idStr = String(item).trim();
+      return { id: idStr, value: idStr, label: idStr };
+    }
+    const id = item.id || item.employee_id || item.emp_id || item.value || item.transfer_id || index;
+    return { ...item, id, value: String(id), label: String(item.label || item.name || id) };
+  });
+
+  return transformed;
+};
+
+/**
  * Fetch Asset Types
  */
 export const getAssetTypes = async (useCache = true) => {
@@ -491,7 +573,7 @@ export const getAssetTypes = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/assets/dropdown/asset-types');
-  
+
   // Transform data to standard format
   const transformedData = data.map(item => ({
     value: item.asset_type || item.type || item.name || item.id || item.value,
@@ -595,7 +677,7 @@ export const getSelectOptions = (data, placeholder = "Select option") => {
 export const getRequestedBy = async () => {
   try {
     const data = await makeApiCall('/assets/dropdown/requested-by');
-    
+
     // Transform data to standard format
     const transformedData = data.map(item => ({
       value: item.id || item.name || item.value,
@@ -628,13 +710,13 @@ export const getDepreciationMethods = async (useCache = true) => {
   }
 
   const data = await makeApiCall('/settings/getDepreciationMethodsDropdown');
-  
+
   // Transform data to standard format - ID as value, name as label
   const transformedData = data.map(item => {
     // Extract ID and name from various possible field names
     const id = item.id || item.method_id || item.value;
     const name = item.method_name || item.name || item.label;
-    
+
     return {
       value: id, // Use ID as value for form submission
       label: name, // Use name as display label
@@ -658,13 +740,13 @@ export const getDepreciationMethods = async (useCache = true) => {
 export const getUserNames = async (useCache = false) => { // Force fresh fetch to get updated structure
   try {
     const data = await makeApiCall('/users/dropdown/user-names');
-    
+
     // Transform data to standard format - ID as value, name as label
     const transformedData = data.map(item => {
       // Extract ID and name from various possible field names
       const id = item.id || item.user_id || item.value;
       const name = item.name || item.username || item.full_name || item.label;
-      
+
       return {
         value: id, // Use ID as value for form submission
         label: name, // Use name as display label
@@ -722,6 +804,8 @@ export default {
   getRequestedBy,
   getUserNames,
   getDepreciationMethods,
+  getEmployeeNamesDropdown,
+  getEmployeeIdsDropdown,
   getAllDropdownData,
   refreshAllDropdownData,
   getSelectOptions,

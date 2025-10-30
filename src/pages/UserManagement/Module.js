@@ -375,9 +375,11 @@ const Module = () => {
   const handleSelectAll = (checked) => {
     if (checked) {
       const allPermissions = {};
-      modules.forEach(module => {
-        allPermissions[module.module_id] = availableActions.map(action => action.name);
-      });
+      if (modules && Array.isArray(modules)) {
+        modules.forEach(module => {
+          allPermissions[module.module_id] = availableActions.map(action => action.name);
+        });
+      }
       setSelectedPermissions(allPermissions);
       setSelectAllModules(true);
     } else {
@@ -686,7 +688,7 @@ const Module = () => {
           </div>
 
           {/* Modules and Actions Sections */}
-          {modules.map((module) => {
+          {modules && Array.isArray(modules) && modules.map((module) => {
             const isModuleFullySelected = selectedPermissions[module.module_id]?.length === availableActions.length;
             const isModulePartiallySelected = selectedPermissions[module.module_id]?.length > 0 && !isModuleFullySelected;
             

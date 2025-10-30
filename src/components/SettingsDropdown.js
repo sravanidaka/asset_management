@@ -161,27 +161,44 @@ const SettingsDropdown = ({
       disabled={disabled}
       allowClear={allowClear}
       showSearch={showSearch}
+      optionLabelProp="title"
       style={style}
       className={className}
       size={size}
       mode={mode}
       maxTagCount={maxTagCount}
-      filterOption={(input, option) =>
-        option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-      }
+      filterOption={(input, option) => {
+        const child = option?.children;
+        let textToSearch = '';
+        if (typeof child === 'string') {
+          textToSearch = child;
+        } else if (Array.isArray(child)) {
+          textToSearch = child.join(' ');
+        } else if (child && typeof child === 'object' && 'props' in child) {
+          // Attempt to extract nested text from React node
+          const nested = child.props?.children;
+          textToSearch = typeof nested === 'string' ? nested : '';
+        }
+        if (!textToSearch) {
+          textToSearch = option?.title || option?.label || option?.value || '';
+        }
+        return String(textToSearch).toLowerCase().includes(String(input).toLowerCase());
+      }}
       {...props}
     >
       {options.map((option, index) => {
         console.log(`🎯 Rendering option ${index}:`, option);
         // Use a combination of id and index to ensure unique keys
-        const uniqueKey = `${option.id || option.value}_${index}`;
+        const optionValue = option.id || option.value || option.cat_id || option.loc_id || option.location_id || option.state_id || option.district_id || option.role_id || option.user_id || option.asset_type_id;
+        const optionLabel = option.label || option.name || option.value || option.cat_name || option.loc_name || option.location_name || option.state_name || option.district_name || option.role_name || option.user_name || option.asset_type_name;
+        const uniqueKey = `${optionValue || index}_${index}`;
         return (
           <Option 
             key={uniqueKey} 
-            value={option.id || option.value} // Use ID as value
-            title={option.label || option.name || option.value}
+            value={optionValue} // Use ID as value
+            title={optionLabel}
           >
-            {option.label || option.name || option.value} {/* Display name as label */}
+            {optionLabel} {/* Display name as label */}
           </Option>
         );
       })}

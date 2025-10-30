@@ -70,6 +70,8 @@ const Register = () => {
   const [assetIds, setAssetIds] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
   const [depreciationMethods, setDepreciationMethods] = useState([]);
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
   const [fileList, setFileList] = useState({
     invoice_receipt: [],
     ownership_proof: [],
@@ -77,6 +79,7 @@ const Register = () => {
     lease_agreements: []
   });
   const [assetIdStatus, setAssetIdStatus] = useState(null);
+  const [assetCodeStatus, setAssetCodeStatus] = useState(null); // 'available' | 'duplicate' | 'validating'
   const [serialNumberStatus, setSerialNumberStatus] = useState(null); // 'available', 'duplicate', 'validating'
   const [assetDetailsVisible, setAssetDetailsVisible] = useState(false);
   const [assetDetails, setAssetDetails] = useState(null);
@@ -87,17 +90,29 @@ const Register = () => {
   const getCategoryNameById = (categoryId) => {
     console.log('🔍 getCategoryNameById called with:', categoryId, 'categories:', categories);
     if (!categoryId || !categories.length) return categoryId;
-    const category = categories.find(cat => cat.id === categoryId || cat.value === categoryId);
+    const category = categories.find(cat => 
+      cat.id === categoryId ||
+      cat.value === categoryId ||
+      cat.cat_id === categoryId ||
+      String(cat.cat_id) === String(categoryId)
+    );
     console.log('🔍 Found category:', category);
-    return category ? category.name || category.label : categoryId;
+    return category ? (category.name || category.label || category.cat_name) : categoryId;
   };
 
   const getLocationNameById = (locationId) => {
     console.log('🔍 getLocationNameById called with:', locationId, 'locations:', locations);
     if (!locationId || !locations.length) return locationId;
-    const location = locations.find(loc => loc.id === locationId || loc.value === locationId);
+    const location = locations.find(loc => 
+      loc.id === locationId || 
+      loc.value === locationId ||
+      loc.loc_id === locationId ||
+      loc.location_id === locationId ||
+      String(loc.loc_id) === String(locationId) ||
+      String(loc.location_id) === String(locationId)
+    );
     console.log('🔍 Found location:', location);
-    return location ? location.name || location.label : locationId;
+    return location ? (location.name || location.label || location.loc_name || location.location_name) : locationId;
   };
 
   const getUserNameById = (userId) => {
@@ -106,6 +121,14 @@ const Register = () => {
     const user = users.find(u => u.id === userId || u.value === userId);
     console.log('🔍 Found user:', user);
     return user ? user.name || user.label : userId;
+  };
+
+  // Map asset type id/code to display name
+  const getAssetTypeNameById = (typeId) => {
+    console.log('🔍 getAssetTypeNameById called with:', typeId, 'assetTypes:', assetTypes);
+    if (typeId === undefined || typeId === null || assetTypes.length === 0) return typeId;
+    const typeObj = assetTypes.find(t => t.id === typeId || t.value === typeId || t.asset_type_id === typeId);
+    return typeObj ? (typeObj.name || typeObj.label || typeObj.asset_type_name) : typeId;
   };
 
   // Function to calculate warranty period in months
@@ -128,10 +151,27 @@ const Register = () => {
     }
   };
 
+  // Function to calculate warranty expiry date from start date and period
+  const calculateWarrantyExpiryDate = (startDate, periodMonths) => {
+    if (!startDate || !periodMonths || periodMonths <= 0) return null;
+    
+    try {
+      const start = dayjs(startDate);
+      const expiry = start.add(periodMonths, 'month');
+      return expiry;
+    } catch (error) {
+      console.error('Error calculating warranty expiry date:', error);
+      return null;
+    }
+  };
+
   // Handle warranty start date change
   const handleWarrantyStartDateChange = (date) => {
     const warrantyExpiry = form.getFieldValue('warranty_expiry');
+    const warrantyPeriod = form.getFieldValue('warranty_period');
+    
     if (date && warrantyExpiry) {
+      // Calculate period from start and expiry dates
       const period = calculateWarrantyPeriod(date, warrantyExpiry);
       if (period !== null && period > 0) {
         form.setFieldValue('warranty_period', period);
@@ -139,6 +179,13 @@ const Register = () => {
         message.success(`Warranty period automatically calculated: ${period} months`);
       } else {
         message.warning('Invalid date range: Expiry date should be after start date');
+      }
+    } else if (date && warrantyPeriod && warrantyPeriod > 0) {
+      // Calculate expiry date from start date and period
+      const expiryDate = calculateWarrantyExpiryDate(date, warrantyPeriod);
+      if (expiryDate) {
+        form.setFieldValue('warranty_expiry', expiryDate);
+        message.success(`Warranty expiry date automatically calculated: ${expiryDate.format('DD-MM-YYYY')}`);
       }
     }
   };
@@ -421,6 +468,54 @@ const Register = () => {
     }
   };
 
+  // Fetch states from API (reusing endpoints from ManageEmployee)
+  const fetchStates = async () => {
+    try {
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      if (!token) return;
+      const response = await fetch('http://202.53.92.35:5004/api/settings/getStatesList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'x-access-token': token,
+        }
+      });
+      const result = await response.json();
+      let data = [];
+      if (Array.isArray(result)) data = result; else if (result.data && Array.isArray(result.data)) data = result.data; else if (result.states && Array.isArray(result.states)) data = result.states; else if (result.result && Array.isArray(result.result)) data = result.result; else if (result.items && Array.isArray(result.items)) data = result.items;
+      setStates(data);
+    } catch (error) {
+      console.error('Error fetching states:', error);
+      setStates([]);
+    }
+  };
+
+  // Fetch districts from API
+  const fetchDistricts = async () => {
+    try {
+      const token = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('token');
+      if (!token) return;
+      const response = await fetch('http://202.53.92.35:5004/api/settings/getDistrictsList', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'x-access-token': token,
+        }
+      });
+      const result = await response.json();
+      let data = [];
+      if (Array.isArray(result)) data = result; else if (result.data && Array.isArray(result.data)) data = result.data; else if (result.districts && Array.isArray(result.districts)) data = result.districts; else if (result.result && Array.isArray(result.result)) data = result.result; else if (result.items && Array.isArray(result.items)) data = result.items;
+      setDistricts(data);
+    } catch (error) {
+      console.error('Error fetching districts:', error);
+      setDistricts([]);
+    }
+  };
+
   // Fetch asset types from API
   const fetchAssetTypes = async () => {
     try {
@@ -494,6 +589,20 @@ const Register = () => {
     });
   };
 
+  // Check if asset code is duplicate
+  const checkAssetCodeDuplicate = (assetCode, currentEditingAsset = null) => {
+    if (!assetCode || !assets || assets.length === 0) return false;
+    
+    return assets.some(asset => {
+      // Skip if this is the same asset we're editing
+      if (currentEditingAsset && (asset.asset_code === currentEditingAsset.asset_code)) {
+        return false;
+      }
+      const existingCode = asset.asset_code || asset.asset_id; // fallback if server still returns asset_id
+      return existingCode && String(existingCode).toLowerCase() === String(assetCode).toLowerCase();
+    });
+  };
+
   // Fetch assets from API
   const fetchAssets = async () => {
     try {
@@ -555,7 +664,10 @@ const Register = () => {
       // ✅ Map data with keys and rename fields
       const dataWithKeys = assetsData.map((item, index) => ({
         ...item,
-        key: item.asset_id || item.id || index.toString(),
+        key: item.asset_code || item.asset_id || item.id || index.toString(),
+        asset_code: item.asset_code || item.asset_id || '',
+        // Normalize purchase_date to a single field used by filters/rendering
+        purchase_date: item.purchase_date || item.purchaseDate || item.purchased_on || item.date_of_purchase || item.purchase || item.purchaseDateUtc || item.purchase_date_utc || '',
         type: item.type || item.asset_type || item.manufacturer_brand || '',
         location: item.location || item.asset_location || '',
         status: item.status || item.asset_status || 'Active',
@@ -617,6 +729,8 @@ const Register = () => {
     fetchAssetIds();
     fetchAssetTypes();
     fetchDepreciationMethods();
+    fetchStates();
+    fetchDistricts();
   }, []);
 
   // Handle table change (pagination, filters, sorting)
@@ -677,10 +791,14 @@ const Register = () => {
           <DatePicker
             placeholder="From Date"
             format="DD-MM-YYYY"
-            value={selectedKeys[0] ? dayjs(selectedKeys[0], 'DD-MM-YYYY') : null}
+            value={selectedKeys[0] && selectedKeys[0].includes('|') && selectedKeys[0].split('|')[0]
+              ? dayjs(selectedKeys[0].split('|')[0], 'DD-MM-YYYY')
+              : null}
             onChange={(date) => {
               const fromDate = date ? date.format('DD-MM-YYYY') : '';
-              setSelectedKeys([fromDate, selectedKeys[1] || '']);
+              const toDate = selectedKeys[0] && selectedKeys[0].includes('|') ? selectedKeys[0].split('|')[1] : '';
+              const combined = `${fromDate}|${toDate}`;
+              setSelectedKeys(combined === '|' ? [] : [combined]);
             }}
             style={{ width: '100%', marginBottom: 8 }}
           />
@@ -692,10 +810,14 @@ const Register = () => {
           <DatePicker
             placeholder="To Date"
             format="DD-MM-YYYY"
-            value={selectedKeys[1] ? dayjs(selectedKeys[1], 'DD-MM-YYYY') : null}
+            value={selectedKeys[0] && selectedKeys[0].includes('|') && selectedKeys[0].split('|')[1]
+              ? dayjs(selectedKeys[0].split('|')[1], 'DD-MM-YYYY')
+              : null}
             onChange={(date) => {
               const toDate = date ? date.format('DD-MM-YYYY') : '';
-              setSelectedKeys([selectedKeys[0] || '', toDate]);
+              const fromDate = selectedKeys[0] && selectedKeys[0].includes('|') ? selectedKeys[0].split('|')[0] : '';
+              const combined = `${fromDate}|${toDate}`;
+              setSelectedKeys(combined === '|' ? [] : [combined]);
             }}
             style={{ width: '100%', marginBottom: 8 }}
           />
@@ -721,48 +843,50 @@ const Register = () => {
       </div>
     ),
     onFilter: (value, record) => {
-      if (!value || value.length < 2) return true;
-      
-      const [fromDate, toDate] = value;
+      if (!value) return true;
+      const [fromDate, toDate] = String(value).split('|');
       if (!fromDate && !toDate) return true;
       
       const recordDate = record[dataIndex];
       if (!recordDate) return false;
       
-      // Convert record date to DD-MM-YYYY format for comparison
-      let recordDateFormatted = '';
-      try {
-        if (typeof recordDate === 'string') {
-          // If it's already in DD-MM-YYYY format
-          if (recordDate.includes('-') && recordDate.length === 10) {
-            recordDateFormatted = recordDate;
-          } else {
-            // Convert from other formats
-            const date = new Date(recordDate);
-            recordDateFormatted = dayjs(date).format('DD-MM-YYYY');
+      // Convert any input to a comparable timestamp (ms)
+      const toTimestamp = (val) => {
+        if (!val) return NaN;
+        if (val instanceof Date) return val.setHours(0,0,0,0);
+        if (typeof val === 'string') {
+          const s = val.trim();
+          // DD-MM-YYYY -> YYYY-MM-DD for parsing
+          const dmy = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+          if (dmy) {
+            const iso = `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+            return new Date(iso).setHours(0,0,0,0);
           }
-        } else {
-          recordDateFormatted = dayjs(recordDate).format('DD-MM-YYYY');
+          // ISO or other parseable string
+          return new Date(s).setHours(0,0,0,0);
         }
-      } catch (error) {
-        console.warn('Error parsing date:', recordDate, error);
-        return false;
+        // Numbers (timestamps) or dayjs objects
+        if (typeof val === 'number') return new Date(val).setHours(0,0,0,0);
+        if (val && typeof val === 'object' && val.$d) {
+          // dayjs instance
+          return val.toDate().setHours(0,0,0,0);
+        }
+        return NaN;
+      };
+
+      const recTs = toTimestamp(recordDate);
+      const fromTs = toTimestamp(fromDate);
+      const toTs = toTimestamp(toDate);
+
+      if (Number.isNaN(recTs)) return false;
+
+      if (!Number.isNaN(fromTs) && !Number.isNaN(toTs)) {
+        return recTs >= fromTs && recTs <= toTs;
+      } else if (!Number.isNaN(fromTs)) {
+        return recTs >= fromTs;
+      } else if (!Number.isNaN(toTs)) {
+        return recTs <= toTs;
       }
-      
-      // Parse dates for comparison
-      const recordDateObj = dayjs(recordDateFormatted, 'DD-MM-YYYY');
-      const fromDateObj = fromDate ? dayjs(fromDate, 'DD-MM-YYYY') : null;
-      const toDateObj = toDate ? dayjs(toDate, 'DD-MM-YYYY') : null;
-      
-      if (fromDateObj && toDateObj) {
-        return recordDateObj.isAfter(fromDateObj.subtract(1, 'day')) && 
-               recordDateObj.isBefore(toDateObj.add(1, 'day'));
-      } else if (fromDateObj) {
-        return recordDateObj.isAfter(fromDateObj.subtract(1, 'day'));
-      } else if (toDateObj) {
-        return recordDateObj.isBefore(toDateObj.add(1, 'day'));
-      }
-      
       return true;
     },
     filterIcon: (filtered) => (
@@ -782,14 +906,14 @@ const Register = () => {
       },
     },
     {
-      title: "Asset ID",
-      dataIndex: "asset_id",
-      key: "asset_id",
-      sorter: (a, b) => safeStringCompare(a.asset_id, b.asset_id),
-      ...getColumnSearchProps('asset_id'),
+      title: "Asset Code",
+      dataIndex: "asset_code",
+      key: "asset_code",
+      sorter: (a, b) => safeStringCompare(a.asset_code, b.asset_code),
+      ...getColumnSearchProps('asset_code'),
       render: (text, record) => (
         <span 
-          onClick={() => fetchAssetDetails(text)}
+          onClick={() => fetchAssetDetails(record.asset_id || record.asset_code)}
           style={{ 
             cursor: 'pointer',
             color: 'inherit',
@@ -822,7 +946,8 @@ const Register = () => {
       title: "Type",
       dataIndex: "type",
       key: "type",
-      sorter: (a, b) => safeStringCompare(a.type, b.type),
+      sorter: (a, b) => safeStringCompare(String(getAssetTypeNameById(a.type) || a.type), String(getAssetTypeNameById(b.type) || b.type)),
+      render: (text, record) => getAssetTypeNameById(record.type),
       ...getColumnSearchProps('type'),
     },
     {
@@ -922,9 +1047,10 @@ const Register = () => {
     setSerialNumberStatus(null); // Reset serial number status
     setWarrantyPeriodCalculated(false); // Reset warranty period calculation status
     if (asset) {
-      // Map API field names to form field names (all fields)
+      // Map API field names to form field names with fallbacks (handles multiple backend shapes)
       const formData = {
         asset_id: asset.asset_id,
+        asset_code: asset.asset_code || asset.asset_id,
         asset_name: asset.asset_name,
         category: asset.category,
         manufacturer: asset.manufacturer_brand,
@@ -932,24 +1058,24 @@ const Register = () => {
         serial_number: asset.serial_number,
         location: asset.location,
         assigned_user: asset.assigned_user,
-        department: asset.department,
+        department: asset.owning_department || asset.department,
         building_facility: asset.building_facility,
-        floor_room: asset.floor_room,
+        floor_room: asset.floor_room_number || asset.floor_room,
         gps_coordinates: asset.gps_coordinates,
-        status: asset.status,
-        // Convert date strings to dayjs objects for DatePicker components
-        purchase_date: asset.purchase_date ? dayjs(asset.purchase_date) : null,
-        warranty_expiry: asset.warranty_expiry ? dayjs(asset.warranty_expiry) : null,
-        amc_expiry_date: asset.amc_expiry_date ? dayjs(asset.amc_expiry_date) : null,
+        status: asset.status || asset.asset_status,
+        // Convert date strings to dayjs objects for DatePicker components (with fallbacks)
+        purchase_date: (asset.purchase_date || asset.purchaseDate) ? dayjs(asset.purchase_date || asset.purchaseDate) : null,
+        warranty_expiry: (asset.warranty_expiry || asset.warranty_expiry_date) ? dayjs(asset.warranty_expiry || asset.warranty_expiry_date) : null,
+        amc_expiry_date: (asset.amc_expiry || asset.amc_expiry_date) ? dayjs(asset.amc_expiry || asset.amc_expiry_date) : null,
         installation_date: asset.installation_date ? dayjs(asset.installation_date) : null,
-        warranty_start_date: asset.warranty_start_date ? dayjs(asset.warranty_start_date) : null,
-        order_number: asset.order_number,
+        warranty_start_date: (asset.warranty_start_date || asset.warranty_start) ? dayjs(asset.warranty_start_date || asset.warranty_start) : null,
+        order_number: asset.order_number || asset.po_number,
         supplier_details: asset.supplier_details,
-        warranty_period: asset.warranty_period,
-        current_value: asset.current_value,
-        original_purchase_price: asset.original_purchase_price,
-        vendor: asset.vendor,
-        type: asset.type,
+        warranty_period: asset.warranty_period_months || asset.warranty_period,
+        current_value: asset.current_book_value || asset.current_value || asset.asset_cost,
+        original_purchase_price: asset.original_purchase_price || asset.asset_original_price,
+        vendor: asset.supplier_vendor || asset.vendor_name || asset.vendor,
+        type: asset.type || asset.asset_type,
         depreciation_method: asset.depreciation_method,
         invoice_receipt: asset.invoice_receipt,
         ownership_proof: asset.ownership_proof,
@@ -961,13 +1087,35 @@ const Register = () => {
       console.log("Status value being set:", formData.status);
       form.setFieldsValue(formData);
       
-      // Reset file lists for editing (you might want to load existing files here)
+      // Preload existing files into Upload components for editing
+      const toUploadList = (files) => {
+        if (!files) return [];
+        if (Array.isArray(files)) {
+          return files.filter(Boolean).map((fname, idx) => ({ uid: `init-${idx}-${fname}`, name: fname, status: 'done' }));
+        }
+        if (typeof files === 'string' && files.trim() !== '') {
+          return [{ uid: `init-0-${files}`, name: files, status: 'done' }];
+        }
+        return [];
+      };
+
+      const initialInvoice = toUploadList(asset.invoice_receipt_files || asset.invoice_receipt);
+      const initialOwnership = toUploadList(asset.ownership_proof_files || asset.ownership_proof);
+      const initialInsurance = toUploadList(asset.insurance_policy_files || asset.insurance_policy);
+      const initialLease = toUploadList(asset.lease_agreement_files || asset.lease_agreements);
+
       setFileList({
-        invoice_receipt: [],
-        ownership_proof: [],
-        insurance_policy: [],
-        lease_agreements: []
+        invoice_receipt: initialInvoice,
+        ownership_proof: initialOwnership,
+        insurance_policy: initialInsurance,
+        lease_agreements: initialLease
       });
+
+      // Keep form values in sync so submit/update handlers receive lists
+      form.setFieldValue('invoice_receipt', initialInvoice);
+      form.setFieldValue('ownership_proof', initialOwnership);
+      form.setFieldValue('insurance_policy', initialInsurance);
+      form.setFieldValue('lease_agreements', initialLease);
     } else {
       form.resetFields();
       // Reset file lists for new asset
@@ -1210,16 +1358,18 @@ const Register = () => {
       return;
     }
 
-    // Check for duplicate asset ID before submission
-    if (values.asset_id && checkAssetIdDuplicate(values.asset_id, editingAsset)) {
-      message.error('❌ Asset ID already exists. Please use a different ID.');
-      setSubmitting(false);
-      return;
-    }
+    // No asset_id duplication check (asset_code used instead)
 
     // Check for duplicate serial number before submission
     if (values.serial_number && checkSerialNumberDuplicate(values.serial_number, editingAsset)) {
       message.error('❌ Serial number already exists. Please use a different serial number.');
+      setSubmitting(false);
+      return;
+    }
+
+    // Check for duplicate asset code before submission
+    if (values.asset_code && checkAssetCodeDuplicate(values.asset_code, editingAsset)) {
+      message.error('❌ Asset code already exists. Please use a different code.');
       setSubmitting(false);
       return;
     }
@@ -1246,19 +1396,31 @@ const Register = () => {
           return '';
         };
 
+        // Process file uploads for update as well
+        const processedUpdateFiles = {
+          invoice_receipt_files: await processFilesForAPI(fileList.invoice_receipt),
+          ownership_proof_files: await processFilesForAPI(fileList.ownership_proof),
+          insurance_policy_files: await processFilesForAPI(fileList.insurance_policy),
+          lease_agreement_files: await processFilesForAPI(fileList.lease_agreements)
+        };
+
         // Map to exact field names the server expects - include ALL required fields
         updateData = {
-          asset_id: editingAsset.asset_id,
+          asset_id: editingAsset.asset_id || editingAsset.id || '',
+          id: editingAsset.id || editingAsset.asset_id || '',
           asset_name: values.asset_name?.toString() || '',
           category: values.category?.toString() || '',
           manufacturer_brand: values.manufacturer?.toString() || '',
           model_number: values.model?.toString() || '',
           serial_number: values.serial_number?.toString() || '',
           location: values.location?.toString() || '', // API expects 'location' not 'asset_location'
+          asset_code: values.asset_code?.toString() || '',
+          state_id: values.state_id || null,
+          district_id: values.district_id || null,
           assigned_user: values.assigned_user?.toString() || '',
           owning_department: values.department?.toString() || '',
           building_facility: values.building_facility?.toString() || '',
-          floor_room: values.floor_room?.toString() || '',
+          floor_room_number: values.floor_room?.toString() || '',
           gps_coordinates: values.gps_coordinates?.toString() || '',
           status: values.status?.toString() || '',
           purchase_date: formatDateForUpdate(values.purchase_date),
@@ -1266,24 +1428,31 @@ const Register = () => {
           order_number: values.order_number?.toString() || '',
           supplier_details: values.supplier_details?.toString() || '',
           installation_date: formatDateForUpdate(values.installation_date),
-          warranty_period: parseInt(values.warranty_period) || 0,
+          warranty_period_months: parseInt(values.warranty_period) || 0,
           warranty_start_date: formatDateForUpdate(values.warranty_start_date),
           current_book_value: parseFloat(values.current_value) || 0,
           original_purchase_price: parseFloat(values.original_purchase_price) || 0,
           asset_cost: parseFloat(values.current_value) || 0, // Use current_value as asset_cost
           supplier_vendor: values.vendor?.toString() || '', // API expects 'supplier_vendor' not 'vendor_name'
-          invoice_receipt: values.invoice_receipt || '',
-          ownership_proof: values.ownership_proof || '',
-          insurance_policy: values.insurance_policy || '',
-          lease_agreements: values.lease_agreements || ''
+          // File names (first ones) similar to create
+          invoice_receipt_files: processedUpdateFiles.invoice_receipt_files.length > 0 ? processedUpdateFiles.invoice_receipt_files[0].attachment_name : (Array.isArray(values.invoice_receipt) && values.invoice_receipt[0]?.name) || '',
+          ownership_proof_files: processedUpdateFiles.ownership_proof_files.length > 0 ? processedUpdateFiles.ownership_proof_files[0].attachment_name : (Array.isArray(values.ownership_proof) && values.ownership_proof[0]?.name) || '',
+          insurance_policy_files: processedUpdateFiles.insurance_policy_files.length > 0 ? processedUpdateFiles.insurance_policy_files[0].attachment_name : (Array.isArray(values.insurance_policy) && values.insurance_policy[0]?.name) || '',
+          lease_agreement_files: processedUpdateFiles.lease_agreement_files.length > 0 ? processedUpdateFiles.lease_agreement_files[0].attachment_name : (Array.isArray(values.lease_agreements) && values.lease_agreements[0]?.name) || null,
+          images: [
+            ...processedUpdateFiles.invoice_receipt_files,
+            ...processedUpdateFiles.ownership_proof_files,
+            ...processedUpdateFiles.insurance_policy_files,
+            ...processedUpdateFiles.lease_agreement_files
+          ]
         };
         
         // Add optional fields if they have values
         if (values.amc_expiry_date) {
-          updateData.amc_expiry_date = values.amc_expiry_date;
+          updateData.amc_expiry = values.amc_expiry_date.format ? values.amc_expiry_date.format('YYYY-MM-DD') : values.amc_expiry_date;
         }
         if (values.type) {
-          updateData.type = values.type.toString();
+          updateData.asset_type = values.type.toString();
         }
         if (values.depreciation_method) {
           updateData.depreciation_method = values.depreciation_method.toString();
@@ -1328,11 +1497,7 @@ const Register = () => {
           return '';
         };
 
-        // Generate standardized asset ID if not provided
-        let generatedAssetId = values.asset_id;
-        if (!generatedAssetId || !validateAssetId(generatedAssetId)) {
-          generatedAssetId = autoGenerateAssetId(values);
-        }
+        // No asset_id generation; using provided asset_code instead
 
         // Process file uploads
         const processedFiles = {
@@ -1344,14 +1509,15 @@ const Register = () => {
 
         // Map to exact field names the server expects - include ALL required fields
         createData = {
-          id: generatedAssetId, // Use standardized asset ID
-          asset_id: generatedAssetId, // Keep both for compatibility
           asset_name: values.asset_name?.toString() || '',
           category: values.category?.toString() || '',
           manufacturer_brand: values.manufacturer?.toString() || '',
           model_number: values.model?.toString() || '',
           serial_number: values.serial_number?.toString() || '',
           location: values.location?.toString() || '', // API expects 'location' not 'asset_location'
+          asset_code: values.asset_code?.toString() || '',
+          state_id: values.state_id || null,
+          district_id: values.district_id || null,
           assigned_user: values.assigned_user?.toString() || '',
           owning_department: values.department?.toString() || '',
           building_facility: values.building_facility?.toString() || '',
@@ -1394,7 +1560,7 @@ const Register = () => {
         }
         
         // Validate that all required fields have non-empty values (all essential fields)
-        const requiredFields = ['asset_id', 'asset_name', 'category', 'manufacturer_brand', 'model_number', 'serial_number', 'location', 'assigned_user', 'owning_department', 'status', 'purchase_date', 'warranty_expiry', 'current_book_value', 'original_purchase_price', 'supplier_vendor'];
+        const requiredFields = ['asset_name', 'category', 'manufacturer_brand', 'model_number', 'serial_number', 'location', 'assigned_user', 'owning_department', 'status', 'purchase_date', 'warranty_expiry', 'current_book_value', 'original_purchase_price', 'supplier_vendor', 'asset_code'];
         const missingFields = requiredFields.filter(field => !createData[field] || createData[field] === '');
         
         if (missingFields.length > 0) {
@@ -1632,58 +1798,47 @@ const Register = () => {
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item
-                name="asset_id"
-                label="Asset ID"
+                name="asset_code"
+                label={<span>Asset Code <span style={{ color: '#ff4d4f' }}>*</span></span>}
                 rules={[
-                  { required: false, message: "Please enter asset ID" },
+                  { required: true, message: "Please enter asset code" },
+                  { max: 50, message: 'Asset code cannot exceed 50 characters' },
                   { 
                     validator: (_, value) => {
                       if (!value) return Promise.resolve();
-                      
-                      // Simple validation - just check if it's not empty and not too long
-                      if (value.length < 1) {
-                        return Promise.reject(new Error('Asset ID cannot be empty'));
+                      if (checkAssetCodeDuplicate(value, editingAsset)) {
+                        return Promise.reject(new Error('Asset code already exists. Please use a different code.'));
                       }
-                      
-                      if (value.length > 50) {
-                        return Promise.reject(new Error('Asset ID cannot exceed 50 characters'));
-                      }
-                      
-                      // Check for duplicate asset ID using helper function
-                      if (checkAssetIdDuplicate(value, editingAsset)) {
-                        return Promise.reject(new Error('Asset ID already exists. Please use a different ID.'));
-                      }
-                      
                       return Promise.resolve();
                     }
                   }
                 ]}
-                tooltip="Enter a unique asset ID. Leave empty for auto-generation."
+                tooltip="Enter your asset code (e.g., Dell001)."
               >
                 <Input 
-                  placeholder="Enter unique asset ID (auto-generated if empty)"
+                  placeholder="Enter asset code (e.g., Dell001)"
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value && assets && assets.length > 0) {
-                      setAssetIdStatus('validating');
+                      setAssetCodeStatus('validating');
                       setTimeout(() => {
-                        if (checkAssetIdDuplicate(value, editingAsset)) {
-                          setAssetIdStatus('duplicate');
+                        if (checkAssetCodeDuplicate(value, editingAsset)) {
+                          setAssetCodeStatus('duplicate');
                         } else {
-                          setAssetIdStatus('available');
+                          setAssetCodeStatus('available');
                         }
-                        form.validateFields(['asset_id']);
-                      }, 500);
+                        form.validateFields(['asset_code']);
+                      }, 300);
                     } else {
-                      setAssetIdStatus(null);
+                      setAssetCodeStatus(null);
                     }
                   }}
                   suffix={
-                    assetIdStatus === 'validating' ? (
+                    assetCodeStatus === 'validating' ? (
                       <span style={{ color: '#1890ff' }}>Checking...</span>
-                    ) : assetIdStatus === 'available' ? (
+                    ) : assetCodeStatus === 'available' ? (
                       <span style={{ color: '#52c41a' }}>✓ Available</span>
-                    ) : assetIdStatus === 'duplicate' ? (
+                    ) : assetCodeStatus === 'duplicate' ? (
                       <span style={{ color: '#ff4d4f' }}>✗ Duplicate</span>
                     ) : null
                   }
@@ -1693,7 +1848,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="asset_name"
-                label="Asset Name"
+                label={<span>Asset Name <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please enter asset name" }
                 ]}
@@ -1704,7 +1859,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="category"
-                label="Category"
+                label={<span>Category <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please select category" }
                 ]}
@@ -1722,7 +1877,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="manufacturer"
-                label="Manufacturer / Brand"
+                label={<span>Manufacturer / Brand <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please enter manufacturer/brand" },
                   { max: 50, message: "Manufacturer name cannot exceed 50 characters" },
@@ -1735,7 +1890,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="model"
-                label="Model Number"
+                label={<span>Model Number <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please enter model number" },
                   { max: 30, message: "Model number cannot exceed 30 characters" },
@@ -1804,7 +1959,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="location"
-                label="Asset Location"
+                label={<span>Asset Location <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please select asset location" }
                 ]}
@@ -1816,10 +1971,54 @@ const Register = () => {
                 />
               </Form.Item>
             </Col>
+            {/*
+            <Col span={8}>
+              <Form.Item
+                name="state_id"
+                label="State"
+                rules={[]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Select state (optional)"
+                  optionFilterProp="children"
+                  filterOption={(input, option) => (option?.children ?? '').toLowerCase().includes(input.toLowerCase())}
+                  style={{ width: '100%' }}
+                >
+                  {states.map((state) => (
+                    <Select.Option key={state.state_id || state.id} value={state.state_id || state.id}>
+                      {state.state_name || state.name || state.state}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="district_id"
+                label="District"
+                rules={[]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Select district (optional)"
+                  optionFilterProp="children"
+                  filterOption={(input, option) => (option?.children ?? '').toLowerCase().includes(input.toLowerCase())}
+                  style={{ width: '100%' }}
+                >
+                  {districts.map((district) => (
+                    <Select.Option key={district.district_id || district.id} value={district.district_id || district.id}>
+                      {district.district_name || district.name || district.district}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            */}
             <Col span={8}>
               <Form.Item
                 name="assigned_user"
-                label="Assigned User"
+                label={<span>Assigned User <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please select assigned user" }
                 ]}
@@ -1892,7 +2091,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="status"
-                label="Asset Status"
+                label={<span>Asset Status <span style={{ color: 'red' }}>*</span></span>}
                 rules={[{ required: true, message: "Please select status" }]}
               >
                 <StatusNamesDropdown 
@@ -1912,9 +2111,6 @@ const Register = () => {
                       if (!value) return Promise.resolve();
                       if (!isValidDate(value)) {
                         return Promise.reject(new Error('Please enter a valid date'));
-                      }
-                      if (isDateInFuture(value)) {
-                        return Promise.reject(new Error('Purchase date cannot be in the future'));
                       }
                       if (isDateBefore(value, '1900-01-01')) {
                         return Promise.reject(new Error('Purchase date cannot be before 1900'));
@@ -1942,11 +2138,12 @@ const Register = () => {
                       if (!isValidDate(value)) {
                         return Promise.reject(new Error('Please enter a valid date'));
                       }
-                      if (isDateInFuture(value)) {
-                        return Promise.reject(new Error('Installation date cannot be in the future'));
-                      }
                       if (isDateBefore(value, '1900-01-01')) {
                         return Promise.reject(new Error('Installation date cannot be before 1900'));
+                      }
+                      const purchaseDate = form.getFieldValue('purchase_date');
+                      if (purchaseDate && dayjs(value).isBefore(dayjs(purchaseDate), 'day')) {
+                        return Promise.reject(new Error('Installation date cannot be before Purchase date'));
                       }
                       return Promise.resolve();
                     }
@@ -1971,11 +2168,12 @@ const Register = () => {
                       if (!isValidDate(value)) {
                         return Promise.reject(new Error('Please enter a valid date'));
                       }
-                      if (isDateInFuture(value)) {
-                        return Promise.reject(new Error('Warranty start date cannot be in the future'));
-                      }
                       if (isDateBefore(value, '1900-01-01')) {
                         return Promise.reject(new Error('Warranty start date cannot be before 1900'));
+                      }
+                      const purchaseDate = form.getFieldValue('purchase_date');
+                      if (purchaseDate && dayjs(value).isBefore(dayjs(purchaseDate), 'day')) {
+                        return Promise.reject(new Error('Warranty Start Date cannot be before Purchase Date'));
                       }
                       return Promise.resolve();
                     }
@@ -2023,7 +2221,19 @@ const Register = () => {
                       <span style={{ color: '#52c41a', fontSize: '12px' }}>Auto-calculated</span>
                     ) : null
                   }
-                  onChange={() => setWarrantyPeriodCalculated(false)}
+                  onChange={(e) => {
+                    setWarrantyPeriodCalculated(false);
+                    const warrantyStart = form.getFieldValue('warranty_start_date');
+                    const period = parseInt(e.target.value);
+                    
+                    if (warrantyStart && period && period > 0) {
+                      const expiryDate = calculateWarrantyExpiryDate(warrantyStart, period);
+                      if (expiryDate) {
+                        form.setFieldValue('warranty_expiry', expiryDate);
+                        message.success(`Warranty expiry date automatically calculated: ${expiryDate.format('DD-MM-YYYY')}`);
+                      }
+                    }
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -2143,7 +2353,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="current_value"
-                label=" Current Book Value"
+                label={<span>Current Book Value <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please enter current book value" },
                   { 
@@ -2170,7 +2380,7 @@ const Register = () => {
             <Col span={8}>
               <Form.Item
                 name="vendor"
-                label="Vendor / Supplier Name"
+                label={<span>Vendor / Supplier Name <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please select vendor/supplier name" }
                 ]}
@@ -2218,7 +2428,7 @@ const Register = () => {
             <Col span={12}>
               <Form.Item
                 name="invoice_receipt"
-                label="Invoice/Receipt Copies"
+                label={<span>Invoice/Receipt Copies <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please upload invoice and receipt copies" }
                 ]}
@@ -2283,7 +2493,7 @@ const Register = () => {
             <Col span={12}>
               <Form.Item
                 name="ownership_proof"
-                label="Proof of Ownership Papers"
+                label={<span>Proof of Ownership Papers <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please upload proof of ownership papers" }
                 ]}
@@ -2350,7 +2560,7 @@ const Register = () => {
             <Col span={12}>
               <Form.Item
                 name="insurance_policy"
-                label="Insurance Policy Documents"
+                label={<span>Insurance Policy Documents <span style={{ color: 'red' }}>*</span></span>}
                 rules={[
                   { required: true, message: "Please upload insurance policy documents" }
                 ]}
@@ -2478,7 +2688,7 @@ const Register = () => {
           <div style={{ marginTop: 24, textAlign: 'right' }}>
             <Space>
               <Button onClick={onClose}>
-                Cancel
+                Close
               </Button>
               <Button
                 className="btn-add"
@@ -2495,410 +2705,6 @@ const Register = () => {
       </Drawer>
 
       {/* Asset Details Modal */}
-      <Modal
-        title="Asset Details"
-        open={assetDetailsVisible}
-        onCancel={() => setAssetDetailsVisible(false)}
-        width={800}
-        footer={[
-          <Button key="close" onClick={() => setAssetDetailsVisible(false)}>
-            Close
-          </Button>
-        ]}
-      >
-        {assetDetails ? (
-          <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-            {/* Basic Information Section */}
-            <Card 
-              title={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FileTextIcon /> Basic Information
-                </span>
-              }
-              size="small" 
-              style={{ marginBottom: '16px' }}
-              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
-            >
-              <Row gutter={[16, 12]}>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset ID</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.asset_id || '-'}
-            </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset Name</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.asset_name || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset Tag</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.asset_tag || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Category</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.category || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Status</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.status || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Asset Type</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.asset_type || '-'}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-                  </Card>
-
-            {/* Technical Specifications */}
-            <Card 
-              title={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ToolOutlined /> Technical Specifications
-                </span>
-              }
-              size="small" 
-              style={{ marginBottom: '16px' }}
-              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
-            >
-              <Row gutter={[16, 12]}>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Manufacturer</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.manufacturer_brand || assetDetails.manufacturer || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Model</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.model_number || assetDetails.model || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Serial Number</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.serial_number || assetDetails.serial || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>BYOD</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.byod || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Requestable</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.requestable || '-'}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-                  </Card>
-
-            {/* Location & Assignment */}
-            <Card 
-              title={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <EnvironmentOutlined /> Location & Assignment
-                </span>
-              }
-              size="small" 
-              style={{ marginBottom: '16px' }}
-              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
-            >
-              <Row gutter={[16, 12]}>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Location</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {getLocationNameById(assetDetails.location) || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Assigned User</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {getUserNameById(assetDetails.assigned_user) || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Department</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.owning_department || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Building/Facility</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.building_facility || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Floor/Room</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.floor_room_number || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>GPS Coordinates</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.gps_coordinates || '-'}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-                  </Card>
-
-            {/* Financial Information */}
-            <Card 
-              title={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <DollarOutlined /> Financial Information
-                </span>
-              }
-              size="small" 
-              style={{ marginBottom: '16px' }}
-              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
-            >
-              <Row gutter={[16, 12]}>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Original Price</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#52c41a' }}>
-                      ₹{assetDetails.original_purchase_price || assetDetails.purchase_cost || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Current Value</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#1890ff' }}>
-                      ₹{assetDetails.current_book_value || assetDetails.current_value || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Depreciation Rate</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.depreciation || '-'}%
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Depreciation Method</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.depreciation_method || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Fully Depreciated</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.fully_depreciated || '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Vendor</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.supplier_vendor || assetDetails.supplier || '-'}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-                  </Card>
-
-            {/* Dates & Warranty */}
-            <Card 
-              title={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <CalendarOutlined /> Dates & Warranty
-                </span>
-              }
-              size="small" 
-              style={{ marginBottom: '16px' }}
-              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
-            >
-              <Row gutter={[16, 12]}>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Purchase Date</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.purchase_date ? new Date(assetDetails.purchase_date).toLocaleDateString() : '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Installation Date</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.installation_date ? new Date(assetDetails.installation_date).toLocaleDateString() : '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Warranty Expiry</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.warranty_expiry ? new Date(assetDetails.warranty_expiry).toLocaleDateString() : '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Warranty Period</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.warranty_period_months || '-'} months
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>AMC Expiry</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.amc_expiry ? new Date(assetDetails.amc_expiry).toLocaleDateString() : '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>EOL Date</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.eol_date ? new Date(assetDetails.eol_date).toLocaleDateString() : '-'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>EOL Rate</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.eol_rate || '-'}%
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Order Number</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
-                      {assetDetails.order_number || '-'}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-                  </Card>
-
-            {/* Activity & Usage */}
-            <Card 
-              title={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <BarChartOutlined /> Activity & Usage
-                </span>
-              }
-              size="small" 
-              style={{ marginBottom: '16px' }}
-              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
-            >
-              <Row gutter={[16, 12]}>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Checkouts</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#1890ff' }}>
-                      {assetDetails.checkouts || '0'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Checkins</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#52c41a' }}>
-                      {assetDetails.checkins || '0'}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Requests</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#fa8c16' }}>
-                      {assetDetails.requests || '0'}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-                  </Card>
-
-            {/* Additional Information */}
-            <Card 
-              title={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FileOutlined /> Additional Information
-                </span>
-              }
-              size="small"
-              headStyle={{ backgroundColor: '#f0f2f5', borderBottom: '1px solid #d9d9d9' }}
-            >
-              <Row gutter={[16, 12]}>
-                <Col span={24}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Notes</div>
-                    <div style={{ fontWeight: '500', fontSize: '14px', lineHeight: '1.5' }}>
-                      {assetDetails.notes || '-'}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-            </Card>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <Spin size="large" />
-            <div style={{ marginTop: '16px', color: '#666' }}>Loading asset details...</div>
-          </div>
-        )}
-      </Modal>
 
       {/* Bulk Upload Drawer */}
       <Drawer
@@ -2910,7 +2716,7 @@ const Register = () => {
         extra={
           <Space>
             <Button onClick={() => setBulkUploadDrawerVisible(false)}>
-              Cancel
+              Close
             </Button>
           </Space>
         }

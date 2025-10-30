@@ -231,39 +231,39 @@ const Roles = () => {
       width: 150,
       sorter: (a, b) => safeStringCompare(a.role_name, b.role_name),
     },
-    {
-      title: "Status",
-      dataIndex: "role_status",
-      key: "role_status",
-      width: 100,
-      sorter: (a, b) => safeStringCompare(a.role_status, b.role_status),
-      render: (status) => {
-        const isActive = status === 'Active' || status === 1 || status === '1';
-        return (
-          <span 
-            style={{ 
-              color: isActive ? '#52c41a' : '#ff4d4f',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            {isActive ? <FaCheck /> : <FaTimes />}
-            {isActive ? 'Active' : 'Inactive'}
-          </span>
-        );
-      },
-      filters: [
-        { text: 'Active', value: 'Active' },
-        { text: 'Inactive', value: 'Inactive' },
-      ],
-      onFilter: (value, record) => {
-        const isActive = record.role_status === 'Active' || record.role_status === 1 || record.role_status === '1';
-        return value === 'Active' ? isActive : !isActive;
-      },
-      filteredValue: filteredInfo.role_status || null,
-    },
+    // {
+    //   title: "Status",
+    //   dataIndex: "role_status",
+    //   key: "role_status",
+    //   width: 100,
+    //   sorter: (a, b) => safeStringCompare(a.role_status, b.role_status),
+    //   render: (status) => {
+    //     const isActive = status === 'Active' || status === 1 || status === '1';
+    //     return (
+    //       <span 
+    //         style={{ 
+    //           color: isActive ? '#52c41a' : '#ff4d4f',
+    //           fontWeight: '500',
+    //           display: 'flex',
+    //           alignItems: 'center',
+    //           gap: '6px'
+    //         }}
+    //       >
+    //         {isActive ? <FaCheck /> : <FaTimes />}
+    //         {isActive ? 'Active' : 'Inactive'}
+    //       </span>
+    //     );
+    //   },
+    //   filters: [
+    //     { text: 'Active', value: 'Active' },
+    //     { text: 'Inactive', value: 'Inactive' },
+    //   ],
+    //   onFilter: (value, record) => {
+    //     const isActive = record.role_status === 'Active' || record.role_status === 1 || record.role_status === '1';
+    //     return value === 'Active' ? isActive : !isActive;
+    //   },
+    //   filteredValue: filteredInfo.role_status || null,
+    // },
     {
       title: "Actions",
       key: "actions",
@@ -382,8 +382,17 @@ const Roles = () => {
       setSelectedPermissions(permissions);
       
       // Check if all modules are selected
+      const standardActions = [
+        { action_id: 1, action_name: 'Add' },
+        { action_id: 2, action_name: 'Edit' },
+        { action_id: 3, action_name: 'View' },
+        { action_id: 4, action_name: 'Delete' },
+        { action_id: 5, action_name: 'Export' },
+        { action_id: 6, action_name: 'List' }
+      ];
+      
       const allModulesSelected = modules.every(module => 
-        permissions[module.module_id]?.length === module.actions.length
+        permissions[module.module_id]?.length === standardActions.length
       );
       setSelectAllModules(allModulesSelected);
     } else {
@@ -414,9 +423,21 @@ const Roles = () => {
     setSelectAllModules(checked);
     if (checked) {
       const allPermissions = {};
-      modules.forEach(module => {
-        allPermissions[module.module_id] = module.actions.map(action => action.action_id);
-      });
+      if (modules && Array.isArray(modules)) {
+        // Define standard actions with numeric IDs (same as in the render function)
+        const standardActions = [
+          { action_id: 1, action_name: 'Add' },
+          { action_id: 2, action_name: 'Edit' },
+          { action_id: 3, action_name: 'View' },
+          { action_id: 4, action_name: 'Delete' },
+          { action_id: 5, action_name: 'Export' },
+          { action_id: 6, action_name: 'List' }
+        ];
+        
+        modules.forEach(module => {
+          allPermissions[module.module_id] = standardActions.map(action => action.action_id);
+        });
+      }
       setSelectedPermissions(allPermissions);
     } else {
       setSelectedPermissions({});
@@ -426,13 +447,20 @@ const Roles = () => {
   // Handle module selection
   const handleModuleChange = (moduleId, checked) => {
     if (checked) {
-      const module = modules.find(m => m.module_id === moduleId);
-      if (module) {
-        setSelectedPermissions(prev => ({
-          ...prev,
-          [moduleId]: module.actions.map(action => action.action_id)
-        }));
-      }
+      // Define standard actions with numeric IDs (same as in the render function)
+      const standardActions = [
+        { action_id: 1, action_name: 'Add' },
+        { action_id: 2, action_name: 'Edit' },
+        { action_id: 3, action_name: 'View' },
+        { action_id: 4, action_name: 'Delete' },
+        { action_id: 5, action_name: 'Export' },
+        { action_id: 6, action_name: 'List' }
+      ];
+      
+      setSelectedPermissions(prev => ({
+        ...prev,
+        [moduleId]: standardActions.map(action => action.action_id)
+      }));
     } else {
       setSelectedPermissions(prev => ({
         ...prev,
@@ -447,7 +475,32 @@ const Roles = () => {
       const values = await form.validateFields();
       
       if (editingRole) {
-        // Update existing role - using insertRolePermissions for both create and update
+        // Check if name or code has changed
+        const nameChanged = values.name !== editingRole.role_name;
+        const codeChanged = values.code !== editingRole.role_code;
+        
+        // If name or code changed, check for duplicates
+        if (nameChanged || codeChanged) {
+          const duplicateName = roles.find(role => 
+            role.role_id !== editingRole.role_id && 
+            role.role_name === values.name
+          );
+          const duplicateCode = roles.find(role => 
+            role.role_id !== editingRole.role_id && 
+            role.role_code === values.code
+          );
+          
+          if (duplicateName) {
+            message.error("Role name already exists. Please choose a different name.");
+            return;
+          }
+          if (duplicateCode) {
+            message.error("Role code already exists. Please choose a different code.");
+            return;
+          }
+        }
+        
+        // Update existing role - using update-permissions API
         const updatePayload = {
           role_id: editingRole.role_id,
           role_name: values.name,
@@ -459,8 +512,8 @@ const Roles = () => {
           })),
         };
 
-        const response = await fetch('http://202.53.92.35:5004/api/roles/insertRolePermissions', {
-          method: 'POST',
+        const response = await fetch('http://202.53.92.35:5004/api/roles/update-permissions', {
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             "x-access-token": sessionStorage.getItem("token"),
@@ -469,18 +522,32 @@ const Roles = () => {
         });
 
         const result = await response.json();
-        console.log('Update role API Response:', result);
+        console.log('Update permissions API Response:', result);
 
-        if (result.success || result.role_id) {
+        if (result.success) {
           message.success("Role updated successfully!");
           setOpen(false);
           // Refresh roles list
           await refreshRolesList();
         } else {
-          message.error("Failed to update role.");
+          // Show specific error message from API
+          const errorMessage = result.message || "Failed to update role.";
+          message.error(errorMessage);
         }
       } else {
-        // Create new role
+        // Create new role - check for duplicates first
+        const duplicateName = roles.find(role => role.role_name === values.name);
+        const duplicateCode = roles.find(role => role.role_code === values.code);
+        
+        if (duplicateName) {
+          message.error("Role name already exists. Please choose a different name.");
+          return;
+        }
+        if (duplicateCode) {
+          message.error("Role code already exists. Please choose a different code.");
+          return;
+        }
+        
         const payload = {
           role_name: values.name,
           role_code: values.code,
@@ -509,7 +576,9 @@ const Roles = () => {
           // Refresh roles list
           await refreshRolesList();
         } else {
-          message.error("Failed to add role.");
+          // Show specific error message from API
+          const errorMessage = result.message || "Failed to add role.";
+          message.error(errorMessage);
         }
       }
     } catch (error) {
@@ -611,14 +680,6 @@ const Roles = () => {
         onClose={onClose}
         open={open}
         styles={{ body: { paddingBottom: 80 } }}
-        extra={
-          <Space>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button type="primary" onClick={onSubmit}>
-              {editingRole ? "Update" : "Submit"}
-            </Button>
-          </Space>
-        }
       >
         <Form form={form} layout="vertical" hideRequiredMark>
           {/* Role Information Section */}
@@ -643,7 +704,7 @@ const Roles = () => {
                   <Input placeholder="Enter name" />
                 </Form.Item>
               </Col>
-              <Col span={8}>
+              {/* <Col span={8}>
                 <Form.Item
                   name="status"
                   label="Status"
@@ -654,7 +715,7 @@ const Roles = () => {
                     <Option value="Inactive">Inactive</Option>
                   </Select>
                 </Form.Item>
-              </Col>
+              </Col> */}
             </Row>
           </div>
 
@@ -670,15 +731,15 @@ const Roles = () => {
           </div>
 
           {/* Modules and Actions Sections */}
-          {modules.map((module) => {
+          {modules && Array.isArray(modules) && modules.map((module) => {
             // Define standard actions for each module
             const standardActions = [
-              { action_id: 'add', action_name: 'Add' },
-              { action_id: 'edit', action_name: 'Edit' },
-              { action_id: 'view', action_name: 'View' },
-              { action_id: 'delete', action_name: 'Delete' },
-              { action_id: 'export', action_name: 'Export' },
-              { action_id: 'list', action_name: 'List' }
+              { action_id: 1, action_name: 'Add' },
+              { action_id: 2, action_name: 'Edit' },
+              { action_id: 3, action_name: 'View' },
+              // { action_id: 4, action_name: 'Delete' },
+              { action_id: 5, action_name: 'Export' },
+              { action_id: 6, action_name: 'List' }
             ];
             
             const isModuleFullySelected = selectedPermissions[module.module_id]?.length === standardActions.length;
@@ -720,6 +781,15 @@ const Roles = () => {
               </div>
             );
           })}
+          {/* Footer buttons */}
+          <Form.Item>
+            <Space className="d-flex justify-content-end w-100">
+              <Button size="small" onClick={onClose}>Close</Button>
+              <Button size="small" type="primary" onClick={onSubmit}>
+                {editingRole ? "Update" : "Submit"}
+              </Button>
+            </Space>
+          </Form.Item>
         </Form>
       </Drawer>
     </div>
