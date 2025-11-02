@@ -18,7 +18,6 @@ import {
   getAssetIdsDropdown,
   getAssetTypes,
   getRequestedBy,
-  getUserNames,
   getEmployeeList,
   getDepreciationMethods
 } from '../services/settingsService';
@@ -60,7 +59,6 @@ const SettingsDropdown = ({
     assetIdsDropdown: getAssetIdsDropdown,
     assetTypes: getAssetTypes,
     requestedBy: getRequestedBy,
-    userNames: getUserNames,
     employeeList: getEmployeeList,
     depreciationMethods: getDepreciationMethods
   };
@@ -255,9 +253,7 @@ export const RequestedByDropdown = (props) => (
   <SettingsDropdown type="requestedBy" placeholder="Select Requested By" {...props} />
 );
 
-export const UserNamesDropdown = (props) => (
-  <SettingsDropdown type="userNames" placeholder="Select User" {...props} />
-);
+// UserNamesDropdown removed - use /api/users endpoint directly instead of /api/users/dropdown/user-names
 
 export const EmployeeListDropdown = (props) => (
   <SettingsDropdown type="employeeList" placeholder="Select Employee" {...props} />

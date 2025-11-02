@@ -29,7 +29,7 @@ import { formatDateForDB, parseDateFromDB } from "../../utils/dateUtils";
 import ExportButton from '../../components/ExportButton';
 import { safeStringCompare } from '../../utils/tableUtils';
 import { autoGenerateAssetId, validateAssetId, generateAssetId } from '../../utils/assetIdUtils';
-import { getCategories, getLocations, getUserNames, getAssetNames, getAssetIds, getAssetTypes, getVendorNames, getDepreciationMethods } from '../../services/settingsService';
+import { getCategories, getLocations, getAssetNames, getAssetIds, getVendorNames, getDepreciationMethods, getStatusNames } from '../../services/settingsService';
 import { 
   StatusNamesDropdown,
   CategoriesDropdown,
@@ -37,9 +37,7 @@ import {
   LocationTypesDropdown,
   LocationNamesDropdown,
   AssetIdsDropdown,
-  AssetTypesDropdown,
   VendorNamesDropdown,
-  UserNamesDropdown,
   DepreciationMethodsDropdown
 } from '../../components/SettingsDropdown';
 import dayjs from 'dayjs';
@@ -85,6 +83,8 @@ const Register = () => {
   const [assetDetails, setAssetDetails] = useState(null);
   const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
   const [warrantyPeriodCalculated, setWarrantyPeriodCalculated] = useState(false);
+  const [userOptions, setUserOptions] = useState([]);
+  const [statusNames, setStatusNames] = useState([]);
 
   // Helper functions to map IDs to names for display
   const getCategoryNameById = (categoryId) => {
@@ -516,12 +516,55 @@ const Register = () => {
     }
   };
 
-  // Fetch asset types from API
+  // Fetch asset types from API using /api/assets/dropdown/asset-ids
   const fetchAssetTypes = async () => {
     try {
-      const assetTypesData = await getAssetTypes();
-      setAssetTypes(assetTypesData);
-      console.log("Asset types loaded successfully:", assetTypesData.length, "items");
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://202.53.92.35:5004/api/assets/dropdown/asset-ids', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': token || '',
+        }
+      });
+
+      if (!response.ok) {
+        console.warn('Asset types dropdown API failed with status:', response.status);
+        setAssetTypes([]);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Asset types API response:', result);
+
+      let assetTypesData = [];
+      if (Array.isArray(result)) {
+        assetTypesData = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        assetTypesData = result.data;
+      } else if (result.assetTypes && Array.isArray(result.assetTypes)) {
+        assetTypesData = result.assetTypes;
+      } else if (result.asset_ids && Array.isArray(result.asset_ids)) {
+        assetTypesData = result.asset_ids;
+      } else if (result.success && Array.isArray(result.data)) {
+        assetTypesData = result.data;
+      } else {
+        const firstArray = Object.values(result || {}).find(v => Array.isArray(v));
+        assetTypesData = firstArray || [];
+      }
+
+      // Transform data to standard format for dropdown
+      const transformedData = assetTypesData.map((item) => ({
+        value: item.id || item.asset_id || item.asset_type_id || item.value,
+        label: item.asset_type || item.name || item.label || item.asset_id || item.id || '',
+        id: item.id || item.asset_type_id || item.asset_id,
+        asset_type: item.asset_type || item.name || item.label,
+        asset_type_id: item.asset_type_id || item.id,
+        ...item
+      })).filter(opt => opt.value && opt.label);
+
+      setAssetTypes(transformedData);
+      console.log("Asset types loaded successfully:", transformedData.length, "items");
     } catch (error) {
       console.error("Error fetching asset types:", error);
       setAssetTypes([]);
@@ -537,6 +580,18 @@ const Register = () => {
     } catch (error) {
       console.error("Error fetching depreciation methods:", error);
       setDepreciationMethods([]);
+    }
+  };
+
+  // Fetch status names from API
+  const fetchStatusNames = async () => {
+    try {
+      const statusNamesData = await getStatusNames();
+      setStatusNames(statusNamesData);
+      console.log("Status names loaded successfully:", statusNamesData.length, "items");
+    } catch (error) {
+      console.error("Error fetching status names:", error);
+      setStatusNames([]);
     }
   };
 
@@ -694,27 +749,65 @@ const Register = () => {
   };
   
 
+  // Fetch users from /api/users for Assigned User dropdown
+  const fetchUsersForDropdown = async () => {
+    try {
+      const response = await api.getUsers();
+
+      if (!response || !response.success) {
+        console.warn('Users dropdown API failed:', response?.error);
+        setUserOptions([]);
+        return;
+      }
+
+      const result = response.data || response;
+
+      let usersData = [];
+      if (Array.isArray(result)) {
+        usersData = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        usersData = result.data;
+      } else if (result.users && Array.isArray(result.users)) {
+        usersData = result.users;
+      } else if (result.success && Array.isArray(result.data)) {
+        usersData = result.data;
+      } else {
+        const firstArray = Object.values(result || {}).find(v => Array.isArray(v));
+        usersData = firstArray || [];
+      }
+
+      const options = usersData
+        .map((item) => ({
+          value: item.id || item.user_id,
+          label: item.name || item.username || item.full_name || item.user_name || '',
+        }))
+        .filter(opt => opt.value && opt.label);
+
+      setUserOptions(options);
+      console.log('Users loaded for dropdown:', options.length, 'items');
+    } catch (error) {
+      console.error('Error fetching users for dropdown:', error);
+      setUserOptions([]);
+    }
+  };
+
   // Fetch dropdown data
   const fetchDropdownData = async () => {
     try {
-      const [categoriesData, locationsData, usersData] = await Promise.all([
+      const [categoriesData, locationsData] = await Promise.all([
         getCategories(),
-        getLocations(),
-        getUserNames()
+        getLocations()
       ]);
       
       console.log('📊 Raw categories data:', categoriesData);
       console.log('📊 Raw locations data:', locationsData);
-      console.log('📊 Raw users data:', usersData);
       
       setCategories(categoriesData);
       setLocations(locationsData);
-      setUsers(usersData);
       
       console.log('Dropdown data loaded:', {
         categories: categoriesData.length,
-        locations: locationsData.length,
-        users: usersData.length
+        locations: locationsData.length
       });
     } catch (error) {
       console.error('Error fetching dropdown data:', error);
@@ -725,10 +818,13 @@ const Register = () => {
   useEffect(() => {
     fetchAssets();
     fetchDropdownData();
+    fetchUsersForDropdown(); // Fetch users from /api/users for Assigned User dropdown
+    fetchStatusNames(); // Fetch status names for normalization
     fetchAssetNames();
     fetchAssetIds();
     fetchAssetTypes();
     fetchDepreciationMethods();
+    fetchVendorNames(); // Fetch vendor names for normalization
     fetchStates();
     fetchDistricts();
   }, []);
@@ -1040,6 +1136,92 @@ const Register = () => {
   ];
 
 
+  // Helper function to normalize dropdown values to match option values
+  // This ensures dropdowns display names instead of IDs when editing
+  const normalizeDropdownValue = (value, options) => {
+    if (!value || !options || options.length === 0) return value;
+    
+    // Convert to string for comparison
+    const valueStr = String(value).trim();
+    
+    // Try to find matching option by ID/value first (handle both string and number)
+    let found = options.find(opt => {
+      const optValue = opt.id || opt.value || opt.cat_id || opt.loc_id || opt.location_id || opt.state_id || opt.district_id || opt.role_id || opt.user_id || opt.asset_type_id || opt.status_id || opt.vendor_id || opt.depreciation_method_id;
+      return String(optValue) === valueStr || optValue === value;
+    });
+    
+    // If not found by ID, try to find by name/label (in case value is a name string)
+    if (!found) {
+      found = options.find(opt => {
+        const optLabel = String(opt.label || opt.name || opt.cat_name || opt.loc_name || opt.location_name || opt.status_name || opt.asset_type_name || opt.vendor_name || opt.depreciation_method_name || '').trim().toLowerCase();
+        return optLabel === valueStr.toLowerCase();
+      });
+    }
+    
+    // Return the option value (ID) in its original type, or return the value as-is if not found
+    return found ? (found.id || found.value) : value;
+  };
+
+  // Helper function to extract ID from dropdown value (for API payload)
+  const extractIdFromDropdownValue = (value, options) => {
+    if (!value) return null;
+    
+    // If value is already a number, return it
+    if (typeof value === 'number') return value;
+    
+    // Convert to string for comparison
+    const valueStr = String(value).trim();
+    
+    // Try to find matching option by ID/value
+    let found = options.find(opt => {
+      const optValue = opt.id || opt.value || opt.cat_id || opt.loc_id || opt.location_id || opt.state_id || opt.district_id || opt.role_id || opt.user_id || opt.asset_type_id || opt.status_id || opt.vendor_id || opt.depreciation_method_id;
+      return String(optValue) === valueStr || optValue === value;
+    });
+    
+    // If found, return the ID
+    if (found) {
+      return found.id || found.value || found.cat_id || found.loc_id || found.location_id || found.status_id || found.vendor_id || found.user_id || found.asset_type_id || found.depreciation_method_id;
+    }
+    
+    // If not found, try parsing as number
+    const numValue = parseInt(valueStr, 10);
+    if (!isNaN(numValue)) return numValue;
+    
+    return null;
+  };
+
+  // Helper function to get file name from file list or processed files
+  const getFileName = (fileList) => {
+    if (!fileList) return null;
+    
+    // If it's a string, return it
+    if (typeof fileList === 'string') return fileList;
+    
+    // If it's an array, get the first file name
+    if (Array.isArray(fileList)) {
+      if (fileList.length === 0) return null;
+      
+      const firstFile = fileList[0];
+      
+      // Handle processed file objects (from processFilesForAPI)
+      if (firstFile && typeof firstFile === 'object') {
+        if (firstFile.attachment_name) return firstFile.attachment_name;
+        if (firstFile.name) return firstFile.name;
+        // Check if it's an object with a filename property
+        const fileName = Object.keys(firstFile).find(key => key.includes('name') || key.includes('file'));
+        if (fileName) return firstFile[fileName];
+      }
+      
+      // Handle string arrays
+      if (typeof firstFile === 'string') return firstFile;
+      
+      // Handle Upload file objects
+      if (firstFile && firstFile.name) return firstFile.name;
+    }
+    
+    return null;
+  };
+
   const showDrawer = (asset = null) => {
     console.log("Opening drawer for asset:", asset);
     setEditingAsset(asset);
@@ -1047,22 +1229,32 @@ const Register = () => {
     setSerialNumberStatus(null); // Reset serial number status
     setWarrantyPeriodCalculated(false); // Reset warranty period calculation status
     if (asset) {
+      // Normalize dropdown values to ensure they match dropdown option values
+      // This ensures dropdowns display names instead of IDs
+      const categoryValue = asset.category ? normalizeDropdownValue(asset.category, categories) : null;
+      const locationValue = asset.location ? normalizeDropdownValue(asset.location, locations) : null;
+      const statusValue = (asset.status || asset.asset_status) ? normalizeDropdownValue(asset.status || asset.asset_status, statusNames) : null;
+      const assignedUserValue = asset.assigned_user ? normalizeDropdownValue(asset.assigned_user, userOptions) : null;
+      const vendorValue = (asset.supplier_vendor || asset.vendor_name || asset.vendor) ? normalizeDropdownValue(asset.supplier_vendor || asset.vendor_name || asset.vendor, vendorNames) : null;
+      const typeValue = (asset.type || asset.asset_type) ? normalizeDropdownValue(asset.type || asset.asset_type, assetTypes) : null;
+      const depreciationMethodValue = asset.depreciation_method ? normalizeDropdownValue(asset.depreciation_method, depreciationMethods) : null;
+
       // Map API field names to form field names with fallbacks (handles multiple backend shapes)
       const formData = {
         asset_id: asset.asset_id,
         asset_code: asset.asset_code || asset.asset_id,
         asset_name: asset.asset_name,
-        category: asset.category,
+        category: categoryValue,
         manufacturer: asset.manufacturer_brand,
         model: asset.model_number,
         serial_number: asset.serial_number,
-        location: asset.location,
-        assigned_user: asset.assigned_user,
+        location: locationValue,
+        assigned_user: assignedUserValue,
         department: asset.owning_department || asset.department,
         building_facility: asset.building_facility,
         floor_room: asset.floor_room_number || asset.floor_room,
         gps_coordinates: asset.gps_coordinates,
-        status: asset.status || asset.asset_status,
+        status: statusValue,
         // Convert date strings to dayjs objects for DatePicker components (with fallbacks)
         purchase_date: (asset.purchase_date || asset.purchaseDate) ? dayjs(asset.purchase_date || asset.purchaseDate) : null,
         warranty_expiry: (asset.warranty_expiry || asset.warranty_expiry_date) ? dayjs(asset.warranty_expiry || asset.warranty_expiry_date) : null,
@@ -1074,9 +1266,9 @@ const Register = () => {
         warranty_period: asset.warranty_period_months || asset.warranty_period,
         current_value: asset.current_book_value || asset.current_value || asset.asset_cost,
         original_purchase_price: asset.original_purchase_price || asset.asset_original_price,
-        vendor: asset.supplier_vendor || asset.vendor_name || asset.vendor,
-        type: asset.type || asset.asset_type,
-        depreciation_method: asset.depreciation_method,
+        vendor: vendorValue,
+        type: typeValue,
+        depreciation_method: depreciationMethodValue,
         invoice_receipt: asset.invoice_receipt,
         ownership_proof: asset.ownership_proof,
         insurance_policy: asset.insurance_policy,
@@ -1404,59 +1596,63 @@ const Register = () => {
           lease_agreement_files: await processFilesForAPI(fileList.lease_agreements)
         };
 
-        // Map to exact field names the server expects - include ALL required fields
+        // Extract IDs from dropdown values
+        const categoryId = extractIdFromDropdownValue(values.category, categories);
+        const statusId = extractIdFromDropdownValue(values.status, statusNames);
+        const locationId = extractIdFromDropdownValue(values.location, locations);
+        const assignedUserId = extractIdFromDropdownValue(values.assigned_user, userOptions);
+        const supplierVendorId = extractIdFromDropdownValue(values.vendor, vendorNames);
+        
+        // Get asset type label from selected value
+        const selectedAssetType = assetTypes.find(t => 
+          (t.value === values.type) || (t.id === values.type) || (t.value?.toString() === values.type?.toString())
+        );
+        const assetTypeLabel = selectedAssetType ? (selectedAssetType.label || selectedAssetType.asset_type || selectedAssetType.value) : (values.type?.toString() || '');
+
+        // Map to exact field names the server expects - matching API payload structure
         updateData = {
           asset_id: editingAsset.asset_id || editingAsset.id || '',
           id: editingAsset.id || editingAsset.asset_id || '',
           asset_name: values.asset_name?.toString() || '',
-          category: values.category?.toString() || '',
           manufacturer_brand: values.manufacturer?.toString() || '',
           model_number: values.model?.toString() || '',
           serial_number: values.serial_number?.toString() || '',
-          location: values.location?.toString() || '', // API expects 'location' not 'asset_location'
           asset_code: values.asset_code?.toString() || '',
+          
+          // IDs from dropdowns
+          category_id: categoryId || null,
+          status_id: statusId || null,
+          location_id: locationId || null,
+          assigned_user_id: assignedUserId || null,
+          supplier_vendor_id: supplierVendorId || null,
           state_id: values.state_id || null,
           district_id: values.district_id || null,
-          assigned_user: values.assigned_user?.toString() || '',
+          
+          // Other fields
           owning_department: values.department?.toString() || '',
           building_facility: values.building_facility?.toString() || '',
           floor_room_number: values.floor_room?.toString() || '',
           gps_coordinates: values.gps_coordinates?.toString() || '',
-          status: values.status?.toString() || '',
           purchase_date: formatDateForUpdate(values.purchase_date),
-          warranty_expiry: formatDateForUpdate(values.warranty_expiry), // API expects 'warranty_expiry' not 'warranty_expiry_date'
-          order_number: values.order_number?.toString() || '',
-          supplier_details: values.supplier_details?.toString() || '',
-          installation_date: formatDateForUpdate(values.installation_date),
+          warranty_expiry: formatDateForUpdate(values.warranty_expiry),
+          amc_expiry: formatDateForUpdate(values.amc_expiry_date),
           warranty_period_months: parseInt(values.warranty_period) || 0,
           warranty_start_date: formatDateForUpdate(values.warranty_start_date),
+          installation_date: formatDateForUpdate(values.installation_date),
+          order_number: values.order_number?.toString() || '',
           current_book_value: parseFloat(values.current_value) || 0,
           original_purchase_price: parseFloat(values.original_purchase_price) || 0,
-          asset_cost: parseFloat(values.current_value) || 0, // Use current_value as asset_cost
-          supplier_vendor: values.vendor?.toString() || '', // API expects 'supplier_vendor' not 'vendor_name'
-          // File names (first ones) similar to create
-          invoice_receipt_files: processedUpdateFiles.invoice_receipt_files.length > 0 ? processedUpdateFiles.invoice_receipt_files[0].attachment_name : (Array.isArray(values.invoice_receipt) && values.invoice_receipt[0]?.name) || '',
-          ownership_proof_files: processedUpdateFiles.ownership_proof_files.length > 0 ? processedUpdateFiles.ownership_proof_files[0].attachment_name : (Array.isArray(values.ownership_proof) && values.ownership_proof[0]?.name) || '',
-          insurance_policy_files: processedUpdateFiles.insurance_policy_files.length > 0 ? processedUpdateFiles.insurance_policy_files[0].attachment_name : (Array.isArray(values.insurance_policy) && values.insurance_policy[0]?.name) || '',
-          lease_agreement_files: processedUpdateFiles.lease_agreement_files.length > 0 ? processedUpdateFiles.lease_agreement_files[0].attachment_name : (Array.isArray(values.lease_agreements) && values.lease_agreements[0]?.name) || null,
-          images: [
-            ...processedUpdateFiles.invoice_receipt_files,
-            ...processedUpdateFiles.ownership_proof_files,
-            ...processedUpdateFiles.insurance_policy_files,
-            ...processedUpdateFiles.lease_agreement_files
-          ]
+          
+          // Asset type and depreciation method (as strings based on payload example)
+          asset_type: assetTypeLabel,
+          depreciation_method: values.depreciation_method?.toString() || '',
+          
+          // File uploads - send as filename strings
+          invoice_receipt_files: (fileList.invoice_receipt && fileList.invoice_receipt.length > 0 && fileList.invoice_receipt[0].name) || '',
+          ownership_proof_files: (fileList.ownership_proof && fileList.ownership_proof.length > 0 && fileList.ownership_proof[0].name) || '',
+          insurance_policy_files: (fileList.insurance_policy && fileList.insurance_policy.length > 0 && fileList.insurance_policy[0].name) || '',
+          lease_agreement_files: (fileList.lease_agreements && fileList.lease_agreements.length > 0 && fileList.lease_agreements[0].name) || null
         };
-        
-        // Add optional fields if they have values
-        if (values.amc_expiry_date) {
-          updateData.amc_expiry = values.amc_expiry_date.format ? values.amc_expiry_date.format('YYYY-MM-DD') : values.amc_expiry_date;
-        }
-        if (values.type) {
-          updateData.asset_type = values.type.toString();
-        }
-        if (values.depreciation_method) {
-          updateData.depreciation_method = values.depreciation_method.toString();
-        }
         
         console.log("Update data being sent:", updateData);
         console.log("Update data types:", Object.keys(updateData).map(key => `${key}: ${typeof updateData[key]}`));
@@ -1507,61 +1703,67 @@ const Register = () => {
           lease_agreement_files: await processFilesForAPI(fileList.lease_agreements)
         };
 
-        // Map to exact field names the server expects - include ALL required fields
+        // Extract IDs from dropdown values
+        const categoryId = extractIdFromDropdownValue(values.category, categories);
+        const statusId = extractIdFromDropdownValue(values.status, statusNames);
+        const locationId = extractIdFromDropdownValue(values.location, locations);
+        const assignedUserId = extractIdFromDropdownValue(values.assigned_user, userOptions);
+        const supplierVendorId = extractIdFromDropdownValue(values.vendor, vendorNames);
+        
+        // Get asset type label from selected value
+        const selectedAssetType = assetTypes.find(t => 
+          (t.value === values.type) || (t.id === values.type) || (t.value?.toString() === values.type?.toString())
+        );
+        const assetTypeLabel = selectedAssetType ? (selectedAssetType.label || selectedAssetType.asset_type || selectedAssetType.value) : (values.type?.toString() || '');
+
+        // Map to exact field names the server expects - matching API payload structure
         createData = {
           asset_name: values.asset_name?.toString() || '',
-          category: values.category?.toString() || '',
           manufacturer_brand: values.manufacturer?.toString() || '',
           model_number: values.model?.toString() || '',
           serial_number: values.serial_number?.toString() || '',
-          location: values.location?.toString() || '', // API expects 'location' not 'asset_location'
           asset_code: values.asset_code?.toString() || '',
+          
+          // IDs from dropdowns
+          category_id: categoryId || null,
+          status_id: statusId || null,
+          location_id: locationId || null,
+          assigned_user_id: assignedUserId || null,
+          supplier_vendor_id: supplierVendorId || null,
           state_id: values.state_id || null,
           district_id: values.district_id || null,
-          assigned_user: values.assigned_user?.toString() || '',
+          
+          // Other fields
           owning_department: values.department?.toString() || '',
           building_facility: values.building_facility?.toString() || '',
           floor_room_number: values.floor_room?.toString() || '',
           gps_coordinates: values.gps_coordinates?.toString() || '',
-          status: values.status?.toString() || '',
           purchase_date: formatDate(values.purchase_date),
-          warranty_expiry: formatDate(values.warranty_expiry), // API expects 'warranty_expiry' not 'warranty_expiry_date'
+          warranty_expiry: formatDate(values.warranty_expiry),
           amc_expiry: formatDate(values.amc_expiry_date),
           warranty_period_months: parseInt(values.warranty_period) || 0,
+          installation_date: formatDate(values.installation_date),
           order_number: values.order_number?.toString() || '',
-          supplier_vendor: values.vendor?.toString() || '', // API expects 'supplier_vendor' not 'vendor_name'
           current_book_value: parseFloat(values.current_value) || 0,
           original_purchase_price: parseFloat(values.original_purchase_price) || 0,
-          asset_type: values.type?.toString() || '',
+          
+          // Asset type and depreciation method (as strings based on payload example)
+          asset_type: assetTypeLabel,
           depreciation_method: values.depreciation_method?.toString() || '',
-          installation_date: formatDate(values.installation_date),
-          // File uploads
-          invoice_receipt_files: processedFiles.invoice_receipt_files.length > 0 ? processedFiles.invoice_receipt_files[0].attachment_name : '',
-          ownership_proof_files: processedFiles.ownership_proof_files.length > 0 ? processedFiles.ownership_proof_files[0].attachment_name : '',
-          insurance_policy_files: processedFiles.insurance_policy_files.length > 0 ? processedFiles.insurance_policy_files[0].attachment_name : '',
-          lease_agreement_files: processedFiles.lease_agreement_files.length > 0 ? processedFiles.lease_agreement_files[0].attachment_name : null,
-          images: [
-            ...processedFiles.invoice_receipt_files,
-            ...processedFiles.ownership_proof_files,
-            ...processedFiles.insurance_policy_files,
-            ...processedFiles.lease_agreement_files
-          ]
+          
+          // File uploads - send as filename strings
+          invoice_receipt_files: (fileList.invoice_receipt && fileList.invoice_receipt.length > 0 && fileList.invoice_receipt[0].name) || '',
+          ownership_proof_files: (fileList.ownership_proof && fileList.ownership_proof.length > 0 && fileList.ownership_proof[0].name) || '',
+          insurance_policy_files: (fileList.insurance_policy && fileList.insurance_policy.length > 0 && fileList.insurance_policy[0].name) || '',
+          lease_agreement_files: (fileList.lease_agreements && fileList.lease_agreements.length > 0 && fileList.lease_agreements[0].name) || null
         };
         
-        // Add optional fields if they have values
-        if (values.amc_expiry_date) {
-          createData.amc_expiry_date = formatDate(values.amc_expiry_date);
-        }
-        if (values.type) {
-          createData.type = values.type.toString();
-        }
-        if (values.depreciation_method) {
-          createData.depreciation_method = values.depreciation_method.toString();
-        }
-        
-        // Validate that all required fields have non-empty values (all essential fields)
-        const requiredFields = ['asset_name', 'category', 'manufacturer_brand', 'model_number', 'serial_number', 'location', 'assigned_user', 'owning_department', 'status', 'purchase_date', 'warranty_expiry', 'current_book_value', 'original_purchase_price', 'supplier_vendor', 'asset_code'];
-        const missingFields = requiredFields.filter(field => !createData[field] || createData[field] === '');
+        // Validate that all required fields have non-empty values
+        const requiredFields = ['asset_name', 'category_id', 'manufacturer_brand', 'model_number', 'status_id', 'location_id', 'assigned_user_id', 'current_book_value', 'original_purchase_price', 'supplier_vendor_id', 'asset_code'];
+        const missingFields = requiredFields.filter(field => {
+          const value = createData[field];
+          return value === null || value === undefined || value === '';
+        });
         
         if (missingFields.length > 0) {
           console.error("Missing required fields:", missingFields);
@@ -2023,11 +2225,22 @@ const Register = () => {
                   { required: true, message: "Please select assigned user" }
                 ]}
               >
-                <UserNamesDropdown 
+                <Select
                   placeholder="Select assigned user"
                   showSearch={true}
                   allowClear={true}
-                />
+                  optionLabelProp="title"
+                  filterOption={(input, option) => {
+                    const label = option?.label || option?.children || '';
+                    return String(label).toLowerCase().includes(String(input).toLowerCase());
+                  }}
+                >
+                  {userOptions.map((option) => (
+                    <Option key={option.value} value={option.value} title={option.label}>
+                      {option.label}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -2400,11 +2613,20 @@ const Register = () => {
                   { max: 50, message: "Asset type cannot exceed 50 characters" }
                 ]}
               >
-                <AssetTypesDropdown 
+                <Select 
                   placeholder="Select asset type"
                   showSearch={true}
                   allowClear={true}
-                />
+                  filterOption={(input, option) =>
+                    (option?.label ?? option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {assetTypes.map((type) => (
+                    <Option key={type.id || type.value} value={type.value || type.label} title={type.label}>
+                      {type.label || type.value}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
 

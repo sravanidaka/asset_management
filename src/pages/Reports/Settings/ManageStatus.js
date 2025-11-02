@@ -19,13 +19,16 @@ export default function ManageStatus({ onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [filteredInfo, setFilteredInfo] = useState({});
   const [sortedInfo, setSortedInfo] = useState({});
+  const [statusTypes, setStatusTypes] = useState([]);
 
   // 🔹 Fetch statuses from API
   const fetchStatuses = async () => {
     setLoading(true);
     try {
       console.log('Fetching statuses from API...');
-      const response = await fetch("http://202.53.92.35:5004/api/settings/getSettingStatusList", {
+      
+      // Fetch status names dropdown data
+      const response = await fetch("http://202.53.92.35:5004/api/settings/getStatusNamesDropdown", {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -50,6 +53,8 @@ export default function ManageStatus({ onNavigate }) {
         data = result.data;
       } else if (result.statuses && Array.isArray(result.statuses)) {
         data = result.statuses;
+      } else if (result.statusNames && Array.isArray(result.statusNames)) {
+        data = result.statusNames;
       } else if (result.result && Array.isArray(result.result)) {
         data = result.result;
       } else if (result.items && Array.isArray(result.items)) {
@@ -65,7 +70,9 @@ export default function ManageStatus({ onNavigate }) {
       // Add key property for each item (required by Ant Design Table)
       const dataWithKeys = data.map((item, index) => ({
         ...item,
-        key: item.id || item._id || index.toString(),
+        key: item.id || item._id || item.status_name_id || index.toString(),
+        // Map label/value fields to status_name if needed
+        status_name: item.status_name || item.name || item.label || '',
       }));
       setDataSource(dataWithKeys);
       message.success(`Statuses loaded successfully (${dataWithKeys.length} items)`);
@@ -77,9 +84,59 @@ export default function ManageStatus({ onNavigate }) {
     }
   };
 
+  // 🔹 Fetch status types from API
+  const fetchStatusTypes = async () => {
+    try {
+      console.log('Fetching status types from API...');
+      const response = await fetch("http://202.53.92.35:5004/api/settings/getStatusTypesDropdown", {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          "x-access-token":  sessionStorage.getItem("token"),
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch status types: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log("Status Types API Response:", result);
+      
+      // Handle different response structures
+      let data = [];
+      if (Array.isArray(result)) {
+        data = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        data = result.data;
+      } else if (result.statusTypes && Array.isArray(result.statusTypes)) {
+        data = result.statusTypes;
+      } else if (result.result && Array.isArray(result.result)) {
+        data = result.result;
+      } else if (result.items && Array.isArray(result.items)) {
+        data = result.items;
+      }
+      
+      // Transform to usable format
+      const transformedData = data.map((item) => ({
+        value: item.status_type || item.name || item.label || item.value,
+        label: item.status_type || item.name || item.label || item.value,
+        id: item.id || item.status_type_id,
+        ...item
+      }));
+      
+      setStatusTypes(transformedData);
+      console.log("Status types loaded:", transformedData.length);
+    } catch (error) {
+      console.error("Error fetching status types:", error);
+      // Don't show error message to user, just log it
+    }
+  };
+
   // 🔹 Fetch data on component mount
   useEffect(() => {
     fetchStatuses();
+    fetchStatusTypes();
   }, []);
 
   // 🔹 Handle table change for filters and sorting
@@ -518,9 +575,22 @@ export default function ManageStatus({ onNavigate }) {
           <Form.Item
             label="Status Type"
                 name="status_type"
-            rules={[{ required: true, message: "Please enter status type" }]}
+            rules={[{ required: true, message: "Please select status type" }]}
           >
-            <Input placeholder="e.g., Operational" />
+            <Select 
+              placeholder="Select status type"
+              showSearch
+              allowClear
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {statusTypes.map((type) => (
+                <Select.Option key={type.id || type.value} value={type.value || type.label}>
+                  {type.label || type.value}
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item

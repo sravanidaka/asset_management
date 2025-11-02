@@ -283,19 +283,31 @@ const Allocate = () => {
     }
   };
 
-  // Get username from sessionStorage for Assigned By
-  const getSessionUsername = () => {
+  // Get user ID from sessionStorage for Assigned By
+  const getSessionUserId = () => {
     try {
-      const direct = sessionStorage.getItem('username');
-      if (direct) return direct;
-      const tokenUser = sessionStorage.getItem('user');
-      if (tokenUser) return JSON.parse(tokenUser).username || JSON.parse(tokenUser).name;
-      const login = sessionStorage.getItem('login');
-      if (login) return JSON.parse(login).username || JSON.parse(login).name;
+      const userStr = sessionStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        // Try to get user ID from various possible fields
+        return user.id || user.user_id || user.userId || user.userID || null;
+      }
+      // If user ID not found in session, try to get from token payload (decoded)
+      const token = sessionStorage.getItem('token');
+      if (token) {
+        try {
+          // Decode JWT token to get user ID (basic decode without verification)
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          return payload.userId || payload.user_id || payload.id || null;
+        } catch (e) {
+          // Token decode failed, ignore
+        }
+      }
     } catch (e) {
-      // ignore
+      console.error('Error getting user ID from session:', e);
     }
-    return 'Admin';
+    // Fallback: return null if no user ID found (will cause validation error)
+    return null;
   };
 
   useEffect(() => {
@@ -304,8 +316,11 @@ const Allocate = () => {
     fetchProducts();
     fetchAssetIdsDropdown();
     fetchEmployees();
-    // Prefill assigned_by from session
-    form.setFieldsValue({ assigned_by: getSessionUsername() });
+    // Prefill assigned_by from session (user ID)
+    const userId = getSessionUserId();
+    if (userId) {
+      form.setFieldsValue({ assigned_by: userId });
+    }
   }, []);
 
   // Handle table change for filters and sorting
@@ -346,7 +361,7 @@ const Allocate = () => {
       model_number: 170,
       serial_number: 190,
     };
-
+    
     // Get fields that have actual data (not N/A, null, undefined, empty)
     const getFieldsWithData = () => {
       const fieldsWithData = new Set();
@@ -841,12 +856,28 @@ const Allocate = () => {
           });
           
           const result = await response.json();
-          const location = result.find(loc => 
-            (loc.id || loc.location_id) === locationId || 
-            (loc.value || loc.id) === locationId
-          );
           
-          return location ? (location.location_name || location.name || location.label) : `Location-${locationId}`;
+          // Handle different response structures
+          let locationsArray = [];
+          if (Array.isArray(result)) {
+            locationsArray = result;
+          } else if (result.data && Array.isArray(result.data)) {
+            locationsArray = result.data;
+          } else if (result.locations && Array.isArray(result.locations)) {
+            locationsArray = result.locations;
+          } else if (result.success && Array.isArray(result.data)) {
+            locationsArray = result.data;
+          } else {
+            console.warn('Unexpected location API response structure:', result);
+            return `Location-${locationId}`;
+          }
+          
+          const location = locationsArray.find(loc => {
+            const locId = loc.id || loc.location_id || loc.loc_id || loc.value;
+            return String(locId) === String(locationId) || locId === locationId;
+          });
+          
+          return location ? (location.location_name || location.loc_name || location.name || location.label) : `Location-${locationId}`;
         } catch (error) {
           console.error('Error fetching location name:', error);
           return `Location-${locationId}`;
@@ -866,6 +897,15 @@ const Allocate = () => {
         // Get location name asynchronously
         const locationName = await getLocationName(values.location_id);
         
+        // Ensure assigned_by is set (use form value or get from session)
+        const assignedBy = values.assigned_by || getSessionUserId();
+        
+        if (!assignedBy) {
+          message.error('❌ Assigned By user ID is required. Please refresh the page and try again.');
+          setLoading(false);
+          return;
+        }
+        
         const updateData = {
           id: editingAllocation.id,
           asset_id: values.asset_id,
@@ -874,7 +914,7 @@ const Allocate = () => {
           transfer: values.transfer || null,
           return_date: values.return_date || null,
           assigned_to: values.assigned_to,
-          assigned_by: values.assigned_by,
+          assigned_by: assignedBy, // Use user ID, not username
           assignment_notes: values.assignment_notes,
           condition_at_issue: values.condition_at_issue,
           // Add the string values for company, location, product
@@ -914,6 +954,15 @@ const Allocate = () => {
         // Get location name asynchronously
         const locationName = await getLocationName(values.location_id);
         
+        // Ensure assigned_by is set (use form value or get from session)
+        const assignedBy = values.assigned_by || getSessionUserId();
+        
+        if (!assignedBy) {
+          message.error('❌ Assigned By user ID is required. Please refresh the page and try again.');
+          setLoading(false);
+          return;
+        }
+        
         const createData = {
           asset_id: values.asset_id,
           assignment_date: values.assignment_date || null,
@@ -921,7 +970,7 @@ const Allocate = () => {
           transfer: values.transfer || null,
           return_date: values.return_date || null,
           assigned_to: values.assigned_to,
-          assigned_by: values.assigned_by,
+          assigned_by: assignedBy, // Use user ID, not username
           assignment_notes: values.assignment_notes,
           condition_at_issue: values.condition_at_issue,
           // Add the string values for company, location, product
@@ -1163,10 +1212,10 @@ const Allocate = () => {
                   {companies
                     .filter(c => c && c.company_id && c.company_name && String(c.company_name).trim() !== '')
                     .map(company => (
-                      <Option key={company.company_id} value={company.company_id}>
-                        {company.company_name}
-                      </Option>
-                    ))}
+                    <Option key={company.company_id} value={company.company_id}>
+                      {company.company_name}
+                    </Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -1202,10 +1251,10 @@ const Allocate = () => {
                   {products
                     .filter(p => p && p.product_id && p.product_name && String(p.product_name).trim() !== '')
                     .map(product => (
-                      <Option key={product.product_id} value={product.product_id}>
-                        {product.product_name}
-                      </Option>
-                    ))}
+                    <Option key={product.product_id} value={product.product_id}>
+                      {product.product_name}
+                    </Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>

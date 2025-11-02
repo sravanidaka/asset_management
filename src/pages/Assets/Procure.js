@@ -29,9 +29,7 @@ import {
   CategoriesDropdown,
   LocationsDropdown,
   VendorNamesDropdown,
-  AssetIdsDropdownNew,
-  RequestedByDropdown,
-  AssetNamesDropdown
+  AssetIdsDropdownNew
 } from '../../components/SettingsDropdown';
 
 const { Option } = Select;
@@ -42,6 +40,7 @@ const Procure = () => {
   const [editingProcurement, setEditingProcurement] = useState(null);
   const [categories, setCategories] = useState([]);
   const [requestedByOptions, setRequestedByOptions] = useState([]);
+  const [employeeOptions, setEmployeeOptions] = useState([]);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -53,74 +52,175 @@ const Procure = () => {
   const [bulkUploadVisible, setBulkUploadVisible] = useState(false);
   const [bulkUploadDrawerVisible, setBulkUploadDrawerVisible] = useState(false);
   const [assetOptions, setAssetOptions] = useState([]);
+  const [assetNameOptions, setAssetNameOptions] = useState([]);
 
-  // Fetch requested-by options from API
-  const fetchRequestedByOptions = async () => {
+  // Fetch employees from API for "Requested By" dropdown
+  const fetchEmployeesForDropdown = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://202.53.92.35:5004/api/assets/dropdown/requested-by', {
+      console.log('🔍 Fetching employees from API...');
+      
+      const response = await fetch('http://202.53.92.35:5004/api/settings/getEmployeesList', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
           'x-access-token': token || ''
         }
       });
-      
-      console.log("Requested-by API Response Status:", response.status);
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Requested-by API Response Data:", result);
-        
-        let requestedByData = [];
-        
-        // Handle different response formats
-        if (result.success && Array.isArray(result.data)) {
-          requestedByData = result.data;
-        } else if (Array.isArray(result.data)) {
-          requestedByData = result.data;
-        } else if (result.data?.requestedBy && Array.isArray(result.data.requestedBy)) {
-          requestedByData = result.data.requestedBy;
-        } else if (Array.isArray(result)) {
-          requestedByData = result;
+
+      if (!response.ok) {
+        console.warn('Employees dropdown API failed with status:', response.status);
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        setEmployeeOptions([]);
+        setRequestedByOptions([]);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('📊 Raw API Response:', result);
+      console.log('📊 Response type:', typeof result);
+      console.log('📊 Response keys:', Object.keys(result || {}));
+
+      let employeesData = [];
+      if (Array.isArray(result)) {
+        employeesData = result;
+        console.log('✅ Using direct array, length:', employeesData.length);
+      } else if (result.data && Array.isArray(result.data)) {
+        employeesData = result.data;
+        console.log('✅ Using result.data, length:', employeesData.length);
+      } else if (result.employees && Array.isArray(result.employees)) {
+        employeesData = result.employees;
+        console.log('✅ Using result.employees, length:', employeesData.length);
+      } else if (result.employeesList && Array.isArray(result.employeesList)) {
+        employeesData = result.employeesList;
+        console.log('✅ Using result.employeesList, length:', employeesData.length);
+      } else if (result.employeeList && Array.isArray(result.employeeList)) {
+        employeesData = result.employeeList;
+        console.log('✅ Using result.employeeList, length:', employeesData.length);
+      } else if (result.success && Array.isArray(result.data)) {
+        employeesData = result.data;
+        console.log('✅ Using result.success.data, length:', employeesData.length);
+      } else if (result.result && Array.isArray(result.result)) {
+        employeesData = result.result;
+        console.log('✅ Using result.result, length:', employeesData.length);
+      } else if (result.items && Array.isArray(result.items)) {
+        employeesData = result.items;
+        console.log('✅ Using result.items, length:', employeesData.length);
+      } else {
+        // Try to find any array in the result
+        const firstArray = Object.values(result || {}).find(v => Array.isArray(v));
+        if (firstArray) {
+          employeesData = firstArray;
+          console.log('✅ Using first array found in result, length:', employeesData.length);
         } else {
-          console.warn("Unexpected requested-by API response format:", result);
-          // Fallback to default options
-          requestedByData = [
-            { name: "John Doe", id: "john_doe" },
-            { name: "Jane Smith", id: "jane_smith" },
-            { name: "Mike Johnson", id: "mike_johnson" },
-            { name: "Sarah Wilson", id: "sarah_wilson" },
-            { name: "David Brown", id: "david_brown" }
-          ];
+          console.error('❌ No array found in response. Full result:', result);
+          console.log('Available keys:', Object.keys(result || {}));
+        }
+      }
+
+      if (employeesData.length > 0) {
+        console.log('📋 First employee item:', employeesData[0]);
+        console.log('📋 First employee keys:', Object.keys(employeesData[0] || {}));
+      }
+
+      // Transform to dropdown options format with more robust field detection
+      const options = employeesData.map((item, index) => {
+        // PRIORITY 1: Try to get full name directly (most reliable)
+        const fullNameDirect = item.full_name || 
+                              item.fullName || 
+                              item.employee_name || 
+                              item.employeeName ||
+                              item.name || 
+                              item.display_name ||
+                              item.displayName ||
+                              item.employee_name_full ||
+                              '';
+        
+        // PRIORITY 2: If no full name, try to construct from first + last name
+        const firstName = item.first_name || item.firstname || item.firstName || item.fname || '';
+        const lastName = item.last_name || item.lastname || item.lastName || item.lname || item.surname || '';
+        const combined = `${firstName} ${lastName}`.trim();
+        
+        // Use full name if available, otherwise use combined first+last, otherwise fallback
+        const employeeName = fullNameDirect || 
+                            combined || 
+                            firstName || 
+                            lastName ||
+                            item.username || 
+                            item.email ||
+                            '';
+        
+        // Try multiple ways to get employee ID (for form value - we store ID but display name)
+        const employeeId = item.employee_id || 
+                          item.emp_id || 
+                          item.id || 
+                          item.user_id || 
+                          item.employeeId ||
+                          item.empId ||
+                          item.userId ||
+                          item.value ||
+                          (index + 1); // Fallback to index if no ID found
+        
+        // Ensure we always have a label (full name), use ID as fallback only if name is missing
+        const displayLabel = employeeName || `Employee ${employeeId}` || `Employee ${index + 1}`;
+        
+        const option = {
+          value: employeeId, // Store ID as value (for API submission)
+          label: displayLabel, // Display full name in dropdown
+          id: employeeId,
+          name: employeeName || displayLabel,
+          fullName: employeeName,
+          ...item
+        };
+        
+        console.log(`📋 Employee ${index + 1}:`, {
+          original: item,
+          firstName,
+          lastName,
+          combined,
+          fullNameDirect,
+          employeeName,
+          employeeId,
+          displayLabel,
+          transformed: option
+        });
+        
+        return option;
+      });
+
+      // Less strict filtering - only filter out if both value and label are missing
+      const validOptions = options.filter(opt => {
+        const isValid = (opt.value !== null && opt.value !== undefined && opt.value !== '') || 
+                       (opt.label !== null && opt.label !== undefined && opt.label !== '');
+        
+        if (!isValid) {
+          console.warn('⚠️ Filtered out invalid option:', opt);
         }
         
-        setRequestedByOptions(requestedByData);
-        console.log("Requested-by options loaded successfully:", requestedByData.length, "items");
-        
+        return isValid;
+      });
+
+      console.log(`✅ Transformed ${validOptions.length} valid options out of ${options.length} total`);
+      console.log('📊 Final options sample:', validOptions.slice(0, 3));
+
+      setEmployeeOptions(validOptions);
+      setRequestedByOptions(validOptions); // Keep for backward compatibility
+      
+      if (validOptions.length === 0) {
+        console.warn('⚠️ No valid employee options found after transformation');
+        message.warning('No employees found in dropdown. Please check API response.');
       } else {
-        console.warn("Requested-by API failed with status:", response.status);
-        // Fallback to default options
-        const defaultOptions = [
-          { name: "John Doe", id: "john_doe" },
-          { name: "Jane Smith", id: "jane_smith" },
-          { name: "Mike Johnson", id: "mike_johnson" },
-          { name: "Sarah Wilson", id: "sarah_wilson" },
-          { name: "David Brown", id: "david_brown" }
-        ];
-        setRequestedByOptions(defaultOptions);
+        console.log('✅ Employees loaded for Requested By dropdown:', validOptions.length, 'items');
       }
     } catch (error) {
-      console.error("Error fetching requested-by options:", error);
-      // Fallback to default options
-      const defaultOptions = [
-        { name: "John Doe", id: "john_doe" },
-        { name: "Jane Smith", id: "jane_smith" },
-        { name: "Mike Johnson", id: "mike_johnson" },
-        { name: "Sarah Wilson", id: "sarah_wilson" },
-        { name: "David Brown", id: "david_brown" }
-      ];
-      setRequestedByOptions(defaultOptions);
+      console.error('❌ Error fetching employees for dropdown:', error);
+      console.error('Error details:', error.message, error.stack);
+      setEmployeeOptions([]);
+      setRequestedByOptions([]);
+      message.error('Failed to load employees. Please check console for details.');
     }
   };
 
@@ -159,6 +259,63 @@ const Procure = () => {
     } catch (error) {
       console.error('Error fetching assets for dropdown:', error);
       setAssetOptions([]);
+    }
+  };
+
+  // Fetch asset names from /api/assets/dropdown/asset-ids for Asset Name dropdown
+  const fetchAssetNamesForDropdown = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://202.53.92.35:5004/api/assets/dropdown/asset-ids', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'x-access-token': token || ''
+        }
+      });
+
+      if (!response.ok) {
+        console.warn('Asset names dropdown API failed with status:', response.status);
+        setAssetNameOptions([]);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Asset names API response:', result);
+
+      let assetsData = [];
+      if (Array.isArray(result)) {
+        assetsData = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        assetsData = result.data;
+      } else if (result.asset_ids && Array.isArray(result.asset_ids)) {
+        assetsData = result.asset_ids;
+      } else if (result.success && Array.isArray(result.data)) {
+        assetsData = result.data;
+      } else {
+        const firstArray = Object.values(result || {}).find(v => Array.isArray(v));
+        assetsData = firstArray || [];
+      }
+
+      // Transform data to show asset names for the dropdown
+      const options = assetsData
+        .map((item) => ({
+          value: item.asset_name || item.name || item.asset_id || item.id || '',
+          label: item.asset_name || item.name || item.label || item.asset_id || item.id || '',
+          id: item.asset_id || item.id,
+          asset_id: item.asset_id || item.id,
+          asset_name: item.asset_name || item.name,
+          ...item
+        }))
+        .filter(opt => opt.value && opt.label);
+
+      setAssetNameOptions(options);
+      console.log('Asset names loaded for dropdown:', options.length, 'items');
+    } catch (error) {
+      console.error('Error fetching asset names for dropdown:', error);
+      setAssetNameOptions([]);
     }
   };
 
@@ -316,11 +473,24 @@ const Procure = () => {
     }
   };
 
+  // Helper function to get employee name by ID (for table display)
+  const getEmployeeNameById = (employeeId) => {
+    if (!employeeId) return employeeId;
+    const employee = employeeOptions.find(emp => 
+      emp.id == employeeId || 
+      emp.value == employeeId || 
+      String(emp.id) === String(employeeId) || 
+      String(emp.value) === String(employeeId)
+    );
+    return employee ? (employee.label || employee.name) : employeeId;
+  };
+
   useEffect(() => {
     fetchCategories();
-    fetchRequestedByOptions();
+    fetchEmployeesForDropdown(); // Use employees API for Requested By dropdown
     fetchProcurements();
     fetchAssetsForDropdown();
+    fetchAssetNamesForDropdown(); // Fetch asset names for Asset Name dropdown
   }, []);
 
   // Handle table change for filters and sorting
@@ -407,9 +577,22 @@ const Procure = () => {
       },
       requested_by: { 
         title: "Requested By", 
-        sorter: (a, b) => safeStringCompare(a.requested_by, b.requested_by),
-        render: (text) => text && text !== 'N/A' ? text : '-',
-        onFilter: (value, record) => record.requested_by?.toString().toLowerCase().includes(value.toLowerCase()),
+        sorter: (a, b) => {
+          const nameA = getEmployeeNameById(a.requested_by);
+          const nameB = getEmployeeNameById(b.requested_by);
+          return safeStringCompare(nameA, nameB);
+        },
+        render: (text, record) => {
+          if (!text || text === 'N/A') return '-';
+          // Display employee name instead of ID
+          const employeeName = getEmployeeNameById(record.requested_by || text);
+          return employeeName !== (record.requested_by || text) ? employeeName : text;
+        },
+        onFilter: (value, record) => {
+          const employeeName = getEmployeeNameById(record.requested_by);
+          return employeeName?.toString().toLowerCase().includes(value.toLowerCase()) ||
+                 record.requested_by?.toString().toLowerCase().includes(value.toLowerCase());
+        },
         filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
           <div style={{ padding: 8 }}>
             <Input
@@ -601,10 +784,37 @@ const Procure = () => {
       }
     };
     
+    // Helper function to normalize dropdown value (ID) from stored name or ID
+    const normalizeRequestedByValue = (value) => {
+      if (!value) return undefined;
+      
+      // First try to find by ID (most common case)
+      let match = employeeOptions.find(opt => 
+        opt.id == value || 
+        opt.value == value ||
+        String(opt.id) === String(value) || 
+        String(opt.value) === String(value)
+      );
+      
+      // If not found by ID, try to find by name/label (in case value is a name string)
+      if (!match) {
+        match = employeeOptions.find(opt => {
+          const optLabel = String(opt.label || opt.fullName || opt.name || '').trim().toLowerCase();
+          const optValue = String(value).trim().toLowerCase();
+          return optLabel === optValue || 
+                 optLabel.includes(optValue) || 
+                 optValue.includes(optLabel);
+        });
+      }
+      
+      // Return the option's value (ID) if found, otherwise return value as-is
+      return match ? match.value : value;
+    };
+
     // Set form values with cleaned data
     form.setFieldsValue({
       indent_number: cleanValue(record.indent_number),
-      requested_by: cleanValue(record.requested_by),
+      requested_by: normalizeRequestedByValue(cleanValue(record.requested_by)),
       requested_date: formatDateForInput(record.requested_date),
       category: cleanValue(record.category),
       asset_id: cleanValue(record.asset_id),
@@ -1060,11 +1270,26 @@ const Procure = () => {
                 label="Requested By"
                 rules={[{ required: true, message: "Please select requester" }]}
               >
-                <RequestedByDropdown 
+                <Select
                   placeholder="Select requester"
                   showSearch={true}
                   allowClear={true}
-                />
+                  optionLabelProp="title"
+                  filterOption={(input, option) => {
+                    const label = option?.label || option?.children || '';
+                    return String(label).toLowerCase().includes(String(input).toLowerCase());
+                  }}
+                >
+                  {employeeOptions.map((option) => (
+                    <Option 
+                      key={option.id || option.value} 
+                      value={option.value} 
+                      title={option.label || option.fullName || option.name}
+                    >
+                      {option.label || option.fullName || option.name || option.value}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -1120,11 +1345,22 @@ const Procure = () => {
                 label="Asset Name"
                 rules={[{ required: true, message: "Please select asset name" }]}
               >
-                <AssetNamesDropdown 
+                <Select 
                   placeholder="Select asset name"
                   showSearch={true}
                   allowClear={true}
-                />
+                  optionLabelProp="title"
+                  filterOption={(input, option) => {
+                    const label = option?.label || option?.children || '';
+                    return String(label).toLowerCase().includes(String(input).toLowerCase());
+                  }}
+                >
+                  {assetNameOptions.map((option) => (
+                    <Option key={option.id || option.value} value={option.value} title={option.label}>
+                      {option.label}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
             <Col span={12}>

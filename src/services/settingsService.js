@@ -734,43 +734,6 @@ export const getDepreciationMethods = async (useCache = true) => {
   return transformedData;
 };
 
-/**
- * Get user names dropdown data
- */
-export const getUserNames = async (useCache = false) => { // Force fresh fetch to get updated structure
-  try {
-    const data = await makeApiCall('/users/dropdown/user-names');
-
-    // Transform data to standard format - ID as value, name as label
-    const transformedData = data.map(item => {
-      // Extract ID and name from various possible field names
-      const id = item.id || item.user_id || item.value;
-      const name = item.name || item.username || item.full_name || item.label;
-
-      return {
-        value: id, // Use ID as value for form submission
-        label: name, // Use name as display label
-        id: id,
-        name: name, // Store name for display
-        key: id,
-        ...item
-      };
-    });
-
-    console.log('User names data transformed:', transformedData);
-    return transformedData;
-  } catch (error) {
-    console.error('Error fetching user names data:', error);
-    // Return fallback data
-    return [
-      { value: 'john_doe', label: 'John Doe', key: 'john_doe' },
-      { value: 'jane_smith', label: 'Jane Smith', key: 'jane_smith' },
-      { value: 'mike_johnson', label: 'Mike Johnson', key: 'mike_johnson' },
-      { value: 'sarah_wilson', label: 'Sarah Wilson', key: 'sarah_wilson' },
-      { value: 'david_brown', label: 'David Brown', key: 'david_brown' }
-    ];
-  }
-};
 
 /**
  * Get dropdown options for HTML select elements
@@ -802,7 +765,6 @@ export default {
   getAssetIds,
   getAssetTypes,
   getRequestedBy,
-  getUserNames,
   getDepreciationMethods,
   getEmployeeNamesDropdown,
   getEmployeeIdsDropdown,

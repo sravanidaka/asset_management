@@ -47,6 +47,7 @@ const Transfer = () => {
   const [filteredInfo, setFilteredInfo] = useState({});
   const [sortedInfo, setSortedInfo] = useState({});
   const [employeeOptions, setEmployeeOptions] = useState([]);
+  const [locationOptions, setLocationOptions] = useState([]);
   const [transferIdOptions, setTransferIdOptions] = useState([]);
 
 
@@ -127,12 +128,13 @@ const Transfer = () => {
     fetchTransfers();
   }, []);
 
-  // Load approver options (employees) for dropdown
+  // Load approver options (employees) and locations for dropdown
   useEffect(() => {
-    const loadEmployees = async () => {
+    const loadDropdownData = async () => {
       try {
+        // Load employees
         const employees = await getEmployeeNamesDropdown();
-        const options = (Array.isArray(employees) ? employees : []).map((item, index) => {
+        const employeeOpts = (Array.isArray(employees) ? employees : []).map((item, index) => {
           if (typeof item === 'string') {
             const nameStr = item.trim();
             return { label: nameStr, value: nameStr, id: nameStr };
@@ -148,13 +150,23 @@ const Transfer = () => {
           const value = item.id || item.employee_id || item.emp_id || item.user_id || item.value || label || index;
           return { label, value, id: value };
         });
-        setEmployeeOptions(options);
+        setEmployeeOptions(employeeOpts);
+        
+        // Load locations
+        const locations = await getLocations();
+        const locationOpts = (Array.isArray(locations) ? locations : []).map((item) => {
+          const label = item.label || item.name || item.loc_name || item.location_name || '';
+          const value = item.id || item.value || item.loc_id || item.location_id || '';
+          return { label, value, id: value, loc_id: item.loc_id, location_name: item.location_name, loc_name: item.loc_name };
+        });
+        setLocationOptions(locationOpts);
       } catch (e) {
-        console.error('Failed to load employee options:', e);
+        console.error('Failed to load dropdown data:', e);
         setEmployeeOptions([]);
+        setLocationOptions([]);
       }
     };
-    loadEmployees();
+    loadDropdownData();
   }, []);
 
   // Load transfer ID options
@@ -460,28 +472,32 @@ const Transfer = () => {
     });
   };
 
-  // Helper function to get location name by ID
-  const getLocationName = async (locationId) => {
-    try {
-      const locations = await getLocations();
-      const location = locations.find(loc => loc.id == locationId || loc.value == locationId);
-      return location ? (location.name || location.label) : locationId;
-    } catch (error) {
-      console.error('Error fetching location name:', error);
-      return locationId;
-    }
+  // Helper function to get location name by ID (uses cached data)
+  const getLocationName = (locationId) => {
+    if (!locationId) return null;
+    // Use cached locationOptions instead of making API call
+    const location = locationOptions.find(loc => 
+      loc.id == locationId || 
+      loc.value == locationId || 
+      loc.loc_id == locationId ||
+      String(loc.id) === String(locationId) || 
+      String(loc.value) === String(locationId) ||
+      String(loc.loc_id) === String(locationId)
+    );
+    return location ? (location.label || location.name || location.loc_name || location.location_name) : locationId;
   };
 
-  // Helper function to get employee name by ID
-  const getEmployeeName = async (employeeId) => {
-    try {
-      const employees = await getEmployeeNamesDropdown();
-      const employee = employees.find(emp => emp.id == employeeId || emp.value == employeeId);
-      return employee ? (employee.name || employee.label) : employeeId;
-    } catch (error) {
-      console.error('Error fetching employee name:', error);
-      return employeeId;
-    }
+  // Helper function to get employee name by ID (uses cached data)
+  const getEmployeeName = (employeeId) => {
+    if (!employeeId) return null;
+    // Use cached employeeOptions instead of making API call
+    const employee = employeeOptions.find(emp => 
+      emp.id == employeeId || 
+      emp.value == employeeId || 
+      String(emp.id) === String(employeeId) || 
+      String(emp.value) === String(employeeId)
+    );
+    return employee ? (employee.label || employee.name) : employeeId;
   };
 
   // Submit form
@@ -514,11 +530,13 @@ const Transfer = () => {
         // Convert to integer if it's a string number
         numericAssetId = parseInt(numericAssetId) || values.asset_id;
 
-        // Convert IDs to names for API
-        const currentLocationName = await getLocationName(values.current_location_or_user);
-        const newLocationName = await getLocationName(values.new_location_or_user);
-        const approverName = await getEmployeeName(values.approver_name);
+        // Convert IDs to names for API (using cached data, no async needed)
+        const currentLocationName = getLocationName(values.current_location_or_user);
+        const newLocationName = getLocationName(values.new_location_or_user);
+        const approverName = getEmployeeName(values.approver_name);
 
+        // Build transfer data for update
+        // API expects transfer data at root level based on error message "allocation data or transfer data"
         updateData = {
           id: editingTransfer.id,
           transferred_to: values.transferred_to, // Save employee ID
@@ -532,7 +550,6 @@ const Transfer = () => {
 
         console.log("Update data being sent:", updateData);
         console.log("Update data types:", Object.keys(updateData).map(key => `${key}: ${typeof updateData[key]}`));
-        console.log("Update data values:", Object.keys(updateData).map(key => `${key}: "${updateData[key]}"`));
 
         const token = sessionStorage.getItem('token') || '';
         console.log("Using token:", token);
@@ -590,11 +607,13 @@ const Transfer = () => {
         // Convert to integer if it's a string number
         numericAssetId = parseInt(numericAssetId) || values.asset_id;
 
-        // Convert IDs to names for API
-        const currentLocationName = await getLocationName(values.current_location_or_user);
-        const newLocationName = await getLocationName(values.new_location_or_user);
-        const approverName = await getEmployeeName(values.approver_name);
+        // Convert IDs to names for API (using cached data, no async needed)
+        const currentLocationName = getLocationName(values.current_location_or_user);
+        const newLocationName = getLocationName(values.new_location_or_user);
+        const approverName = getEmployeeName(values.approver_name);
 
+        // Build transfer data payload according to API requirements
+        // API expects transfer data at root level based on error message "allocation data or transfer data"
         createData = {
           transferred_to: values.transferred_to, // Save employee ID
           asset_id: numericAssetId, // Use numeric asset_id for API
@@ -607,16 +626,6 @@ const Transfer = () => {
 
         console.log("Create data being sent:", createData);
         console.log("Create data types:", Object.keys(createData).map(key => `${key}: ${typeof createData[key]}`));
-        console.log("Create data values:", Object.keys(createData).map(key => `${key}: "${createData[key]}"`));
-        console.log("Expected payload structure:", {
-          transferred_to: 123, // employee ID
-          asset_id: 1050,
-          current_location_or_user: "Ahmedabad Store",
-          new_location_or_user: "Audit Team",
-          transfer_date: "2025-07-31",
-          justification: "Verification of asset status",
-          approver_name: "Audit Lead"
-        });
 
         // Validate required fields before sending
         const requiredFields = ['transferred_to', 'asset_id', 'current_location_or_user', 'new_location_or_user', 'transfer_date', 'justification', 'approver_name'];
@@ -829,7 +838,7 @@ const Transfer = () => {
             </Col>
             <Col span={12}>
               <Form.Item
-                name="asset_id"
+                name="generated_asset_id"
                 label="Asset ID"
                 rules={[{ required: true, message: "Please select asset ID" }]}
               >

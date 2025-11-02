@@ -457,10 +457,6 @@ const User = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      // Find the role name for the selected role_id
-      const selectedRole = roles.find(role => role.role_id === values.role_id);
-      const roleName = selectedRole ? selectedRole.role_name : values.role_id;
-      
       if (editingUser) {
         // For updates, send all fields
         const updateData = {
@@ -468,12 +464,12 @@ const User = () => {
           name: values.name,
           email: values.email,
           phone: values.phone,
-          roles: roleName, // Use 'roles' field as per your payload structure
+          role_id: values.role_id, // API expects role_id, not roles
           status: values.status,
         };
         
         // Only include password if it's provided
-        if (values.password) {
+        if (values.password && values.password.trim() !== '') {
           updateData.password = values.password;
         }
         
@@ -503,7 +499,7 @@ const User = () => {
           email: values.email,
           phone: values.phone,
           password: values.password,
-          roles: roleName, // Use 'roles' field as per your payload structure
+          role_id: values.role_id, // API expects role_id, not roles
           status: values.status,
         };
         
@@ -780,7 +776,30 @@ const User = () => {
           </Row>
 
           {/* Password - Required for new users, optional for editing */}
-
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                name="password"
+                label={
+                  <span>
+                    Password 
+                    {!editingUser && <span style={{ color: 'red' }}> *</span>}
+                  </span>
+                }
+                rules={[
+                  ...(!editingUser ? [{ required: true, message: "Please enter password" }] : []),
+                  {
+                    min: 6,
+                    message: "Password must be at least 6 characters",
+                  },
+                ]}
+              >
+                <Input.Password 
+                  placeholder={editingUser ? "Leave blank to keep current password" : "Enter password"} 
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           {/* Role */}
           <Row gutter={16}>

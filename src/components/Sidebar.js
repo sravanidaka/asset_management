@@ -98,21 +98,21 @@ function Sidebar({ activeScreen, handleNavClick, handleLogout, isOpen = true, co
       }}
     >
       {/* Header */}
-      <div className="sidebar-header text-center py-3" style={{ flexShrink: 0, borderBottom: '1px solid #eee' }}>
+      {/* <div className="sidebar-header text-center py-3" style={{ flexShrink: 0, borderBottom: '1px solid #eee' }}> */}
         {collapsed ? (
           <img
             src="/logo.png"
             alt="Logo"
-            style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+            style={{ width: '80px', height: '60px', objectFit: 'contain' }}
           />
         ) : (
           <img
             src="/greenlantern-logo.png"
             alt="Logo"
-            style={{ width: '180px', height: '50px', objectFit: 'contain' }}
+            style={{ width: '250px', height: '60px', objectFit: 'contain' }}
           />
         )}
-      </div>
+      {/* </div> */}
 
       {/* Navigation */}
       <nav
